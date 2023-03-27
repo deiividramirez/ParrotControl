@@ -53,18 +53,11 @@ cd build
 
 ### CMake
 ~~~bash
-cmake -D CMAKE_BUILD_TYPE=RELEASE \\
-            -D CMAKE_INSTALL_PREFIX=$cwd/installation/OpenCV-"$cvVersion" \\
-            -D INSTALL_C_EXAMPLES=ON \\
-            -D INSTALL_PYTHON_EXAMPLES=ON \\
-            -D WITH_TBB=ON \\
-            -D WITH_V4L=ON \\
-            -D OPENCV_PYTHON3_INSTALL_PATH=$cwd/OpenCV-$cvVersion-py3/lib/python3.5/site-packages \\
-        -D WITH_QT=ON \\
-        -D WITH_OPENGL=ON \\
-        -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \\
-        -D BUILD_EXAMPLES=ON ..
+cmake -D CMAKE_BUILD_TYPE=RELEASE  -D CMAKE_INSTALL_PREFIX=$cwd/installation/OpenCV-"$cvVersion"  -D INSTALL_PYTHON_EXAMPLES=ON  -D WITH_V4L=ON  -D WITH_QT=OFF  -D WITH_OPENGL=ON  -D PYTHON_DEFAULT_EXECUTABLE=$(which python3) -D BUILD_NEW_PYTHON_SUPPORT=ON -D BUILD_opencv_python3=ON -D HAVE_opencv_python3=ON -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules  -D BUILD_EXAMPLES=ON ..
 
+# cmake -D CMAKE_BUILD_TYPE=RELEASE  -D CMAKE_INSTALL_PREFIX=$cwd/installation/OpenCV-"$cvVersion"  -D INSTALL_PYTHON_EXAMPLES=ON  -D WITH_V4L=ON  -D WITH_QT=OFF  -D WITH_OPENGL=ON  -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules  -D BUILD_EXAMPLES=ON ..
+
+# -D OPENCV_PYTHON3_INSTALL_PATH=$cwd/OpenCV-$cvVersion-py3/lib/python3.5/site-packages
 make -j$(nproc)
 sudo make install
 ~~~
@@ -168,3 +161,22 @@ if (success):
 ~~~
 
 Para más información: [PyParrot](https://pyparrot.readthedocs.io/en/latest/) o en el [repositorio](https://github.com/amymcgovern/pyparrot)
+
+---
+---
+27 Marzo:
+
+Al parecer, causaba daño al ejemplo.
+
+~~~bash
+pip uninstall opencv-contrib-python
+pip install opencv-contrib-python-headless
+~~~
+
+Si embargo, aparece el siguiente error `freetype spu text error: Breaking unbreakable line` al parecer, no hay solución para este error.
+
+Apareció otro error, porque no se tenía instalado cv2.imshow() así:
+
+~~~bash
+sudo apt-get install libopencv-*
+~~~
