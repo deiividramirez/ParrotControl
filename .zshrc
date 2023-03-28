@@ -183,9 +183,3 @@ source ~/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 gen
 unset PYTHONPATH
-
-# export system_lib_LIBRARIES=/usr/lib/x86_64-linux-gnu/libavcodec.so;/usr/lib/x86_64-linux-gnu/libavformat.so;/usr/lib/x86_64-linux-gnu/libavutil.so;/usr/lib/x86_64-linux-gnu/libswscale.so
-# export libavcodec_LIBRARIES=/usr/lib/x86_64-linux-gnu/libavcodec.so
-# export libavformat_LIBRARIES=/usr/lib/x86_64-linux-gnu/libavformat.so
-# export libavutil_LIBRARIES=/usr/lib/x86_64-linux-gnu/libavutil.so
-# export libswscale_LIBRARIES=/usr/lib/x86_64-linux-gnu/libswscale.so

@@ -113,6 +113,7 @@ git clone https://github.com/amymcgovern/pyparrot.git
 cd pyparrot
 python setup.py build
 python setup.py install
+pip install zeroconf pyqt5 matplotlib 
 ~~~
 
 Se puede probar la instalación por medio del siguiente script. Este script debe ser ejecutado con el dron conectado por medio de wifi y en un espacio abierto.
