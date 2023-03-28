@@ -6,9 +6,11 @@ import time
 import cv2
 
 class UserVision:
-    def __init__(self, vision):
+    def __init__(self, vision: DroneVision, bebot: Bebop):
         self.index = 0
         self.vision = vision
+        self.drone = bebot
+        self.status = True
 
     def ImageFunction(self, args):
         img = self.vision.get_latest_valid_picture()
@@ -18,6 +20,11 @@ class UserVision:
             # cv2.imwrite(filename, img)
             cv2.imshow('Actual image', img)
             cv2.waitKey(1)
+            self.index += 1
+
+            if self.index == 500:
+                self.status = False
+
 
 
 # Make my bebop object
@@ -32,13 +39,13 @@ if success:
     bebopVision = DroneVision(bebop, Model.BEBOP)
 
     # Create the user vision function with the bebopVision object
-    userVision = UserVision(bebopVision)
+    userVision = UserVision(bebopVision, bebop)
     
     # Start the vision thread
     bebopVision.set_user_callback_function(userVision.ImageFunction, user_callback_args=None)
     
     # Start the video
-    # successVideo = bebopVision.open_video()
+    successVideo = bebopVision.open_video()
 
     # if successVideo:
     #     print("Vision successfully started!")
@@ -48,10 +55,18 @@ if success:
     #     # bebop.pan_tilt_camera_velocity(pan_velocity=0, tilt_velocity=-2, duration=4)
     #     # bebop.smart_sleep(25)
     #     print("Finishing demo and stopping vision")
-    #     bebopVision.close_video()
 
+    while userVision.status:
+        pass
+        # print(userVision.index)
+        # if userVision.index == 1:
+        # bebop.smart_sleep()
+    
+    # Stop the vision thread
+    bebopVision.close_video()
 
-    bebop.smart_sleep(30)
+    # bebop.safe_land(5)
+
 
     # disconnect nicely so we don't need a reboot
     bebop.disconnect()

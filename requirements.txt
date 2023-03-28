@@ -1,1 +1,2 @@
 pyparrot==1.5.20
+zeroconf==0.20.0
