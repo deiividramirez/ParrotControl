@@ -9,11 +9,34 @@ PATH = Path(__file__).parent.absolute().parent.absolute().parent.absolute()
 from Funcs import *
 
 class GUO:
-    def __init__(self, img_desired: np.ndarray, drone_id: int) -> None:
+    def __init__(self, img_desired: np.ndarray, drone_id: int, RT: np.ndarray = np.eye(3,3)) -> None:
+        """
+        __init__ function for the GUO class
+
+        This class makes possible to use the control law proposed in the paper
+        "Image-based estimation, planning, and control for high-speed flying
+        through multiple openings" by Guo et al. (2019).
+
+        This is an Image Based Visual Servoing (IBVS) method, which means that
+        the control law is based on the image of the drone, not in the state of
+        the drone. Here, the control uses some invariant features of the image
+        to make the drone move to the desired position by decoupling the
+        translational and rotational components of the control law.
+        
+        @Params:
+          img_desired: np.ndarray -> A (n,3) matrix with the desired image
+          drone_id: int -> A flag to know which drone is going to be used
+          RT: np.ndarray -> A (3,3) matrix with the rotation and translation  
+                    for changing the reference frame from the camera to the drone
+
+        @Returns:
+          None
+
+        """
         self.img_desired = img_desired
         self.img_desired_gray = cv2.cvtColor(img_desired, cv2.COLOR_BGR2GRAY)
         self.drone_id = drone_id
-
+        self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
         if self.getDesiredData() < 0:
@@ -21,6 +44,16 @@ class GUO:
           exit()
       
     def getDesiredData(self) -> int:
+      """
+      This function get the desired data from the desired image, send the points to
+      an sphere with the unified model of camera
+
+      @Params:
+        None
+
+      @Returns: 
+        int -> A flag to know if the aruco was found or not
+      """
       self.desiredData = desiredData()
       temp = get_aruco(self.img_desired_gray)
     
@@ -43,6 +76,16 @@ class GUO:
       return 0
     
     def getActualData(self, actualImage: np.ndarray) -> int:
+      """
+      This function get the actual data from the actual image, send the points to
+      an sphere with the unified model of camera
+
+      @Params:
+        actualImage: np.ndarray -> A (n,3) matrix with the actual image
+
+      @Returns: 
+        int -> A flag to know if the aruco was found or not
+      """
       self.actualData = actualData()
       temp = get_aruco(actualImage)
     
@@ -65,6 +108,19 @@ class GUO:
       return 0
       
     def getDistances(self, pointsActual: np.ndarray, pointsDesired: np.ndarray, CONTROL: int = 1) -> tuple:
+      """
+      This function returns the Euclidean distance between the points in the sphere with the unified model
+      of camera with the actual and desired points obtained from the image.
+
+      @Params:
+        pointsActual: np.ndarray -> A (n,3) matrix with the actual points in the sphere
+        pointsDesired: np.ndarray -> A (n,3) matrix with the desired points in the sphere
+        CONTROL: int -> A flag to choose between the control proposed in the paper (1) or the control proposed in the paper (2)
+
+      @Returns:
+        tuple -> A tuple with the distances and the error
+        
+      """
       distances, error = [], []
       for i in range(pointsActual.shape[0]):
           for j in range(i):
@@ -84,6 +140,18 @@ class GUO:
       return distances, np.array(error).reshape(len(error), 1)
 
     def laplacianGUO(self, pointsSphere: np.ndarray, distances: dictDist, CONTROL:int = 1):
+      """
+      This function returns the laplacian matrix for the GUO method in the paper "Image-based estimation, planning,
+      and control for high-speed flying through multiple openings".
+
+      @Params:
+        pointsSphere: np.ndarray -> A (n,3) matrix with the points in the sphere
+        distances: dictDist -> A list of dictionaries with the distances between the points in the sphere
+        CONTROL: int -> A flag to choose between the control proposed in the paper (1) or the control proposed in the paper (2)
+      
+      @Returns:
+        L: np.ndarray -> A (n,3) matrix with the laplacian matrix
+      """
       n = len(distances)
       L = np.zeros((n, 3))
 
@@ -97,17 +165,35 @@ class GUO:
       return L
 
     def getVels(self, actualImage: np.ndarray) -> np.ndarray:
+      """
+      This function returns the velocities of the drones in the drone's frame
+      It will use the desired image and the actual image to calculate the velocities
+      with the GUO proposed method in the paper "Image-based estimation, planning, 
+      and control for high-speed flying through multiple openings".
 
+      @Params:
+        actualImage: np.ndarray -> A (m,n) matrix with the actual image of the drone's camera
+      
+      @Returns:
+        vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
+      """
       if self.getActualData(actualImage) == -1:
         return -1
       
       self.distances, self.error = self.getDistances(self.actualData.inSphere, self.desiredData.inSphere)
+      
       self.L = self.laplacianGUO(self.actualData.inSphere, self.distances)
       self.Lp = np.linalg.pinv(self.L)
+      
       self.vels = np.concatenate(
             (self.Lp @ self.error, 
              np.zeros((3, 1))), axis=0)
-      return self.vels
+      
+      self.input = np.concatenate(
+            (self.rotAndTrans @ self.vels[:3, :],
+             self.rotAndTrans @ self.vels[3:, :]), axis=0
+      )
+      return self.input
         
   
 if __name__ == "__main__":
