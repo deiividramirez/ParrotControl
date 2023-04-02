@@ -7,6 +7,7 @@ class desiredData:
     def __init__(self) -> None:
         self.feature = []
         self.inSphere = []
+        self.bearings = []
 
     def __repr__(self) -> str:
         return f"features: {type(self.feature)} - inSphere: {type(self.inSphere)}"
@@ -16,6 +17,7 @@ class actualData:
     def __init__(self) -> None:
         self.feature = []
         self.inSphere = []
+        self.bearings = []
 
     def __repr__(self) -> str:
         return f"features: {type(self.feature)} - inSphere: {type(self.inSphere)}"
@@ -38,7 +40,7 @@ def load_yaml(PATH, drone_id) -> dict:
         temp["camera_intrinsic_parameters"] = np.array(
             temp["camera_intrinsic_parameters"]).reshape(3, 3)
         temp["seguimiento"] = np.array(temp["seguimiento"])
-        temp["bearing"] = np.array(temp["bearing"])
+        temp["bearings"] = np.array(temp["bearings"], dtype=np.float32).reshape(-1, 3)
 
         temp["inv_camera_intrinsic_parameters"] = np.linalg.inv(
             temp["camera_intrinsic_parameters"])
