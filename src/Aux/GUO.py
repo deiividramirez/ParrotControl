@@ -179,7 +179,7 @@ class GUO:
         vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
       """
       
-      if self.storeImage == actualImage:
+      if np.all(self.storeImage == actualImage):
         print("Same image")
         return self.input
       else:
@@ -210,5 +210,5 @@ if __name__ == "__main__":
 
     # print(guo.getDistances(guo.desiredData.inSphere, guo.desiredData.inSphere))
     print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
-    print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
-    print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
+    print(guo.getVels(cv2.imread(f"{PATH}/data/desired_2f.jpg")))
+    print(guo.getVels(cv2.imread(f"{PATH}/data/desired_2f.jpg")))
