@@ -43,7 +43,15 @@ class GUO:
           exit()
         
         self.storeImage = None
-      
+
+        # open the file to save the data of the control law
+        self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w")
+        self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w")
+        self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w")
+        self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w")
+        self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w")
+        # self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w")
+
     def getDesiredData(self) -> int:
       """
       This function get the desired data from the desired image, send the points to
@@ -201,7 +209,22 @@ class GUO:
             (self.rotAndTrans @ self.vels[:3, :],
              self.rotAndTrans @ self.vels[3:, :]), axis=0
       )
+
+      self.file_vel_x.write(f"{self.input[0,0]}\n")
+      self.file_vel_y.write(f"{self.input[1,0]}\n")
+      self.file_vel_z.write(f"{self.input[2,0]}\n")
+      self.file_vel_yaw.write(f"{self.input[5,0]}\n")
+
+      self.file_error.write(f"{np.linalg.norm(self.error, ord=1)}\n")
+
       return self.input
+  
+    def close(self):
+      self.file_vel_x.close()
+      self.file_vel_y.close()
+      self.file_vel_z.close()
+      self.file_vel_yaw.close()
+      self.file_error.close()
         
   
 if __name__ == "__main__":
@@ -212,3 +235,5 @@ if __name__ == "__main__":
     print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
     print(guo.getVels(cv2.imread(f"{PATH}/data/desired_2f.jpg")))
     print(guo.getVels(cv2.imread(f"{PATH}/data/desired_2f.jpg")))
+
+    guo.close()  

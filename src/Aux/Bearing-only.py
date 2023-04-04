@@ -41,6 +41,16 @@ class BearingOnly:
         if self.getDesiredData() < 0:
           print("No se encontró el aruco deseado")
           exit()
+
+        
+        self.storeImage = None
+
+        self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w")
+        self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w")
+        self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w")
+        self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w")
+        self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w")
+        # self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w")
       
     def getDesiredData(self) -> int:
       """
@@ -168,6 +178,12 @@ class BearingOnly:
       @Returns:
         vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
       """
+      if np.all(self.storeImage == actualImage):
+        print("Same image")
+        return self.input
+      else:
+        self.storeImage = actualImage
+        
       if self.getActualData(actualImage) == -1:
         return -1
       
@@ -190,12 +206,28 @@ class BearingOnly:
             (self.rotAndTrans @ self.vels[:3, :],
              self.rotAndTrans @ self.vels[3:, :]), axis=0
       )
+
+      self.file_vel_x.write(f"{self.input[0, 0]}\n")
+      self.file_vel_y.write(f"{self.input[1, 0]}\n")
+      self.file_vel_z.write(f"{self.input[2, 0]}\n")
+      self.file_vel_yaw.write(f"{self.input[3, 0]}\n")
+
+      self.file_error.write(f"{np.linalg.norm(self.error, ord=1)}\n")
+
       return self.input
-        
+
+    def close(self):
+      self.file_vel_x.close()
+      self.file_vel_y.close()
+      self.file_vel_z.close()
+      self.file_vel_yaw.close()
+      self.file_error.close()
   
 if __name__ == "__main__":
     img = cv2.imread(f"{PATH}/data/desired_1f.jpg")
-    temp = BearingOnly(img, 1)
+    bear = BearingOnly(img, 1)
 
-    # print(temp.getDistances(temp.desiredData.inSphere, temp.desiredData.inSphere))
-    print(temp.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
+    # print(bear.getDistances(bear.desiredData.inSphere, bear.desiredData.inSphere))
+    print(bear.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
+    print(bear.getVels(cv2.imread(f"{PATH}/data/desired_2f.jpg")))
+    print(bear.getVels(cv2.imread(f"{PATH}/data/desired_2f.jpg")))
