@@ -41,6 +41,8 @@ class GUO:
         if self.getDesiredData() < 0:
           print("No se encontró el aruco deseado")
           exit()
+        
+        self.storeImage = None
       
     def getDesiredData(self) -> int:
       """
@@ -176,6 +178,13 @@ class GUO:
       @Returns:
         vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
       """
+      
+      if self.storeImage == actualImage:
+        print("Same image")
+        return self.input
+      else:
+        self.storeImage = actualImage
+
       if self.getActualData(actualImage) == -1:
         return -1
       
@@ -200,4 +209,6 @@ if __name__ == "__main__":
     guo = GUO(img, 1)
 
     # print(guo.getDistances(guo.desiredData.inSphere, guo.desiredData.inSphere))
+    print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
+    print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
     print(guo.getVels(cv2.imread(f"{PATH}/data/desired_1f.jpg")))
