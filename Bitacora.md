@@ -182,3 +182,11 @@ Apareció otro error, porque no se tenía instalado cv2.imshow() así:
 ~~~bash
 sudo apt-get install libopencv-*
 ~~~
+
+---
+---
+
+Posible solución para leer los archivos de bebop.sdp:
+
+[StackOverflow](https://stackoverflow.com/questions/50591068/how-to-get-the-frame-from-the-vlc-media-player)
+
