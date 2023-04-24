@@ -4,6 +4,13 @@ from pyparrot.Model import Model
 import threading
 import time
 import cv2
+import os
+
+import pathlib
+actualPATH = pathlib.Path(__file__).parent.absolute()
+print(actualPATH)
+
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "protocol_whitelist;file,rtp,udp"
 
 class UserVision:
     def __init__(self, vision: DroneVision, bebot: Bebop):
@@ -15,15 +22,25 @@ class UserVision:
     def ImageFunction(self, args):
         img = self.vision.get_latest_valid_picture()
         if img is not None:
-            # filename = "test_image_%06d.png" % self.index
-            # print(f"saving picture on {self.index} {filename}" )
-            # cv2.imwrite(filename, img)
-            cv2.imshow('Actual image', img)
-            cv2.waitKey(1)
-            self.index += 1
+            filename = actualPATH + "/img/test_image_%06d.png" % self.index
+            print(f"saving picture on {self.index} {filename}" )
+            cv2.imwrite(filename, img)
+            # cv2.imshow('Actual image', img)
+            # cv2.waitKey(1)
+            
+            self.update()
 
-            if self.index == 500:
-                self.status = False
+            if self.index == 100:
+                print("Closing program")
+                self.safe_close()
+
+    def update(self):
+        self.index += 1
+
+    def safe_close(self):
+        self.status = False
+        self.vision.close_video()
+        self.drone.disconnect()
 
 
 
@@ -46,6 +63,7 @@ if success:
     
     # Start the video
     successVideo = bebopVision.open_video()
+    
 
     # if successVideo:
     #     print("Vision successfully started!")
@@ -61,6 +79,7 @@ if success:
         # print(userVision.index)
         # if userVision.index == 1:
         # bebop.smart_sleep()
+    
     
     # Stop the vision thread
     bebopVision.close_video()
