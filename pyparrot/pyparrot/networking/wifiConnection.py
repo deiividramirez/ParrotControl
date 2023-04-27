@@ -194,7 +194,7 @@ class WifiConnection:
                 (data, address) = self.udp_receive_sock.recvfrom(66000)
 
             except socket.timeout:
-                print("timeout - trying again")
+                print("timeout - trying again - wifi is probably not connected")
 
             except:
                 pass
@@ -454,7 +454,7 @@ class WifiConnection:
         try_num = 0
         self._set_command_received('SEND_WITH_ACK', False, seq_id)
         while (try_num < self.max_packet_retries and not self._is_command_received('SEND_WITH_ACK', seq_id)):
-            color_print("sending packet on try %d", try_num)
+            color_print(f"sending packet on try {try_num}", "INFO")
             self.safe_send(packet)
             try_num += 1
             self.smart_sleep(0.5)

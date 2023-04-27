@@ -4,8 +4,12 @@ import cv2
 from pathlib import Path
 PATH = Path(__file__).parent.absolute().parent.absolute().parent.absolute()
 
-# load python file from src/Aux/Funcs.py
-from Funcs import *
+if __name__ == "__main__":
+  # load python file from src/Aux/Funcs.py
+  from Funcs import *
+else:
+  # load python file from Aux/Funcs.py
+  from src.Aux.Funcs import *
 
 class BearingOnly:
     def __init__(self, img_desired: np.ndarray, drone_id: int, RT: np.ndarray = np.eye(3,3)) -> None:

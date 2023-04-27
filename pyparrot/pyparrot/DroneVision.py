@@ -56,6 +56,23 @@ class DroneVision:
         # so here we just sent the image index to 1 ( to start)
         self.image_index = 1
 
+        fullPath = inspect.getfile(DroneVision)
+        shortPathIndex = fullPath.rfind("/")
+        if (shortPathIndex == -1):
+            # handle Windows paths
+            shortPathIndex = fullPath.rfind("\\")
+        print(shortPathIndex)
+        shortPath = fullPath[0:shortPathIndex]
+        self.imagePath = join(shortPath, "images")
+        self.utilPath = join(shortPath, "utils")
+
+        # if self.imagePath does not exist, create it
+        if not os.path.exists(self.imagePath):
+            os.makedirs(self.imagePath)
+
+        print(self.imagePath)
+        print(self.utilPath)
+
 
     def set_user_callback_function(self, user_callback_function=None, user_callback_args=None):
         """
@@ -101,6 +118,11 @@ class DroneVision:
         shortPath = fullPath[0:shortPathIndex]
         self.imagePath = join(shortPath, "images")
         self.utilPath = join(shortPath, "utils")
+
+        # if self.imagePath does not exist, create it
+        if not os.path.exists(self.imagePath):
+            os.makedirs(self.imagePath)
+
         print(self.imagePath)
         print(self.utilPath)
 
