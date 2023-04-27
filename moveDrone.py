@@ -11,10 +11,13 @@ Press the following keys to move the drone:
     e: move *X* backward
     s: move *Y* left
     d: move *Y* right
-    x: move *Z* up
-    c: move *Z* down
+    c: move *Z* up
+    x: move *Z* down
     v: move *yaw* left
     b: move *yaw* right
+
+    g: less vel
+    h: more vel
 
     t: take off
     l: land
@@ -61,10 +64,10 @@ while True:
         print("Moving *Y* right")
         bebop.move_relative(0, VEL, 0, 0)
     elif option == "x":
-        print("Moving *Z* up")
+        print("Moving *Z* down")
         bebop.move_relative(0, 0, VEL, 0)
     elif option == "c":
-        print("Moving *Z* down")
+        print("Moving *Z* up")
         bebop.move_relative(0, 0, -VEL, 0)
     elif option == "v":
         print("Moving *yaw* left")
@@ -72,6 +75,16 @@ while True:
     elif option == "b":
         print("Moving *yaw* right")
         bebop.move_relative(0, 0, 0, 1)
+    elif option == "g":
+        VEL += .25
+        if VEL >= 1:
+            VEL = 1
+        print("Se subió 0.25")
+    elif option == "h":
+        if VEL <= 0:
+            VEL = 0
+        VEL -= .25
+        print("Se bajó 0.25")
     else:
         print("Invalid option")
         continue
