@@ -205,11 +205,12 @@ class DroneVision:
 
         :return: Nothing
         """
-        print("starting vision thread")
+        print("Starting vision thread")
         self.vision_thread.start()
 
         if (self.user_vision_thread is not None):
             self.user_vision_thread.start()
+            print("Starting user vision thread")
 
     def _user_callback(self, user_vision_function, user_args):
         """

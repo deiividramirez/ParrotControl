@@ -1,6 +1,7 @@
 from cv2 import aruco
-import yaml
 import numpy as np
+import yaml
+import cv2
 
 
 class desiredData:
@@ -46,13 +47,34 @@ def load_yaml(PATH, drone_id) -> dict:
             temp["camera_intrinsic_parameters"])
         return temp
 
+def loadGeneralYaml(PATH) -> dict:
+    with open(f"{PATH}/config/general.yaml", "r") as f:
+        return yaml.load(f, Loader=yaml.FullLoader)
 
-def get_aruco(img: np.ndarray) -> tuple:
-    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+
+def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
+    if n == 6:
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+    if n == 4:
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
     parameters = aruco.DetectorParameters()
     corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=parameters)
-    return corners, ids, rejectedImgPoints
+    return np.int32(corners), ids, rejectedImgPoints
 
+def drawAruco(img: np.ndarray, info: tuple) -> np.ndarray:
+    temp_img = img.copy()
+    corners, ids, rejectedImgPoints = info
+    return aruco.drawDetectedMarkers(temp_img, corners, ids)
+    
+
+def drawArucoPoints(img: np.ndarray, info: tuple) -> np.ndarray:
+    # temp_img = img.copy()
+    temp_img = img
+    corners, ids, rejectedImgPoints = info
+    for i in range(len(ids)):
+        for j in range(4):
+            cv2.circle(temp_img, tuple(corners[i][0][j]), 2, (0, 255, 0), -1)
+    return temp_img
 
 def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
     temp = []

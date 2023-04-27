@@ -68,7 +68,7 @@ class GUO:
         int -> A flag to know if the aruco was found or not
       """
       self.desiredData = desiredData()
-      temp = get_aruco(self.img_desired_gray)
+      temp = get_aruco(self.img_desired_gray, 4)
     
       for index, seg in enumerate(self.yaml["seguimiento"]):
         if seg in temp[1]:
@@ -88,7 +88,7 @@ class GUO:
       
       return 0
     
-    def getActualData(self, actualImage: np.ndarray) -> int:
+    def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
       """
       This function get the actual data from the actual image, send the points to
       an sphere with the unified model of camera
@@ -100,11 +100,11 @@ class GUO:
         int -> A flag to know if the aruco was found or not
       """
       self.actualData = actualData()
-      temp = get_aruco(actualImage)
+      # imgAruco = get_aruco(actualImage)
     
       for index, seg in enumerate(self.yaml["seguimiento"]):
-        if seg in temp[1]:
-           self.actualData.feature.append(temp[0][index][0])
+        if imgAruco[1] is not None and seg in imgAruco[1]:
+           self.actualData.feature.append(imgAruco[0][index][0])
         else:
            return -1
       self.actualData.feature = np.array(self.actualData.feature, dtype=np.int32).reshape(-1, 2)
@@ -177,7 +177,7 @@ class GUO:
           L[i, :] = temp
       return L
 
-    def getVels(self, actualImage: np.ndarray) -> np.ndarray:
+    def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
       """
       This function returns the velocities of the drones in the drone's frame
       It will use the desired image and the actual image to calculate the velocities
@@ -197,7 +197,7 @@ class GUO:
       else:
         self.storeImage = actualImage
 
-      if self.getActualData(actualImage) == -1:
+      if self.getActualData(actualImage, imgAruco) == -1:
         return -1
       
       self.distances, self.error = self.getDistances(self.actualData.inSphere, self.desiredData.inSphere)
