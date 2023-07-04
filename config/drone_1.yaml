@@ -2,13 +2,14 @@ camera_intrinsic_parameters: [700,   0,    960,
                               0,    700,   540,
                               0,     0,     1]
 
-seguimiento: [97, 99]
+seguimiento: [97]
 
-bearings:  [.94, -.24, -.24,
-            .78,  .59, -.2]
+# bearings:  [.94, -.24, -.24,
+#             .78,  .59, -.2]
+bearings: []
 
-gain_v: 1
-gain_v_max: 1
+gain_v: .5
+gain_v_max: .5
 
 gain_w: 1
 gain_w_max: 1

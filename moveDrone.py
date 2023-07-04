@@ -38,7 +38,7 @@ connection = bebop.connect(5)
 bebop.set_max_tilt(5)
 bebop.set_max_vertical_speed(1)
 
-VEL = .25
+VEL = .2
 
 while True:
     option = printInit()
@@ -50,7 +50,8 @@ while True:
     elif option == "l":
         print("Landing")
         bebop.safe_land(5)
-        exit()
+        print("Landed")
+        break
     elif option == "w":
         print("Moving *X* forward")
         bebop.move_relative(VEL, 0, 0, 0)
@@ -71,23 +72,22 @@ while True:
         bebop.move_relative(0, 0, -VEL, 0)
     elif option == "v":
         print("Moving *yaw* left")
-        bebop.move_relative(0, 0, 0, -1)
+        bebop.move_relative(0, 0, 0, -.5)
     elif option == "b":
         print("Moving *yaw* right")
-        bebop.move_relative(0, 0, 0, 1)
+        bebop.move_relative(0, 0, 0, .5)
     elif option == "g":
-        VEL += .25
+        VEL += .1
         if VEL >= 1:
             VEL = 1
-        print("Se subió 0.25")
+        print("Se subió 0.1")
     elif option == "h":
         if VEL <= 0:
             VEL = 0
-        VEL -= .25
-        print("Se bajó 0.25")
+        VEL -= .1
+        print("Se bajó 0.1")
     else:
         print("Invalid option")
         continue
 
-
-
+bebop.disconnect()

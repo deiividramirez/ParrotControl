@@ -68,8 +68,8 @@ def drawAruco(img: np.ndarray, info: tuple) -> np.ndarray:
     
 
 def drawArucoPoints(img: np.ndarray, info: tuple) -> np.ndarray:
-    # temp_img = img.copy()
-    temp_img = img
+    temp_img = img.copy()
+    # temp_img = img
     corners, ids, rejectedImgPoints = info
     for i in range(len(ids)):
         for j in range(4):

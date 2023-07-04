@@ -22,7 +22,8 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "protocol_whitelist;file,rtp,udp"
 
 
 class successConnection:
-    def __init__(self, robot: Bebop):
+    def __init__(self, robot: Bebop, control: classmethod):
+        self.control = control
         self.bebop = robot
         self.user = None
 
@@ -33,7 +34,7 @@ class successConnection:
         print("Class DroneVision created")
 
         # Create the user vision function with the self.bebopVision object
-        self.user = UserVision(self.bebopVision, self.bebop, 0, 1)
+        self.user = UserVision(self.bebopVision, self.bebop, self.control, 1)
         print("Class UserVision created")
 
         # Start the vision thread
@@ -63,7 +64,7 @@ class UserVision:
         self.img = None
         self.imgAruco = None
         self.takeImage = False
-        self.firstRun = False
+        self.firstRun = True
 
         self.drone.set_video_stream_mode("high_reliability")
         self.drone.set_video_framerate("30_FPS")
@@ -95,7 +96,9 @@ class UserVision:
             if self.img is not None:
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
                 if self.imgAruco[1] is not None:
-                    print("Aruco detected")
+                    # print(
+                    #     f"Aruco detected with ID's {sorted([i for i in self.imgAruco[1][:,0]])}"
+                    # )
                     cv2.imshow(
                         "Actual image", Funcs.drawArucoPoints(self.img, self.imgAruco)
                     )
@@ -105,25 +108,48 @@ class UserVision:
                 cv2.waitKey(1)
 
     def ImageFunction(self, args):
-        while True:
-            if self.firstRun:
-                print("Sleeping for 5 seconds while getting video stream started up")
-                time.sleep(5)
-                self.firstRun = False
+        try:
+            while True:
+                if self.firstRun:
+                    print("\nSleeping for 5 seconds while getting video stream started up")
+                    time.sleep(5)
 
-            print("In image function", self.index)
-            self.update()
-            time.sleep(1)
-            # self.takeImage = True
-            # if self.img is not None:
-            #     cv2.imshow('Actual image', self.img)
-            #     cv2.waitKey(1)
-            # self.drone.smart_sleep(2)
-            print("INDEX: ", self.index)
-            if self.index == 20:
-                print("Closing program")
-                self.safe_close()
-                break
+                    self.firstRun = False
+                    self.drone.safe_takeoff(5)
+                    self.drone.ask_for_state_update()
+
+                    print("\n\nBattery: ", self.drone.sensors.battery)
+                    print("Flying state: ", self.drone.sensors.flying_state, "\n\n")
+
+                print("In image function", self.index)
+                self.update()
+                time.sleep(1)
+
+                self.vels = np.tanh(self.control.getVels(self.img, self.imgAruco))
+                print("Vels: ", self.vels)
+
+                # self.drone.move_relative(
+                #     self.vels[0], self.vels[1], self.vels[2], self.vels[5]
+                # )
+
+                # print(self.control(self.img, ))
+                # self.takeImage = True
+                # if self.img is not None:
+                #     cv2.imshow('Actual image', self.img)
+                #     cv2.waitKey(1)
+                # self.drone.smart_sleep(2)
+                print("INDEX: ", self.index)
+                if self.index == 2:
+                    print("\nClosing program")
+                    self.safe_close()
+                    break
+                
+        except Exception as e:
+            print(e)
+            self.drone.safe_land(5)
+            self.safe_close()
+        finally:
+            self.safe_close()
 
     def update(self):
         self.index += 1
@@ -131,7 +157,7 @@ class UserVision:
     def safe_close(self):
         print("\nSafely closing program and stopping drone...")
 
-        # self.drone.safe_land(5)
+        self.drone.safe_land(5)
 
         self.status = False
         self.getImagesState = False
@@ -143,6 +169,7 @@ class UserVision:
 
         self.drone.stop_video_stream()
         self.drone.smart_sleep(2)
+
         self.drone.disconnect()
 
     def saveImages(self):
@@ -176,24 +203,25 @@ if __name__ == "__main__":
     # Connect to the bebop
     connection = bebop.connect(5)
     bebop.start_video_stream()
-    # bebop.ask_for_state_update()
 
     # set safe indoor parameters
     bebop.set_max_tilt(5)
     bebop.set_max_vertical_speed(1)
 
-    # desiredPath = f"{actualPATH}/data/desired1_f.jpg"
-    # desiredIMG = cv2.imread(desiredPath)
-    # R = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
-    # control1 = GUO.GUO(desiredIMG, 1, R)
-    # exit()
+    desiredPath = f"{actualPATH}/data/desired_1f.jpg"
+    desiredIMG = cv2.imread(desiredPath)
+    R = np.array([[0, 0, 1], 
+                  [1, 0, 0], 
+                  [0, 1, 0]])
+    controlGUO = GUO.GUO(desiredIMG, 1, R)
 
     if connection:
-        servo = successConnection(bebop)
+        servo = successConnection(bebop, controlGUO)
         try:
             servo.loop()
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt has been caught.")
+            bebop.safe_land(5)
             servo.user.safe_close()
     else:
         print("Error connecting to bebop. Retry")
