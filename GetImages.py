@@ -88,6 +88,7 @@ class UserVision:
         self.getImagesThread.start()
         if self.yaml["SAVE_IMAGES"]:
             self.saveImagesThread.start()
+        self.clicked = False
 
         # self.drone.safe_takeoff(5)
         # self.drone.smart_sleep(2)
@@ -102,6 +103,7 @@ class UserVision:
                 # self.takeImage = True
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
                 cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
+                # cv2.setMouseCallback('Actual image', self.onMouse)
                 cv2.resizeWindow("Actual image", 640, 360)
                 if self.imgAruco[1] is not None:
                     # print(
@@ -120,7 +122,7 @@ class UserVision:
 
     def ImageFunction(self, args):
         try:
-            while True:
+            while not self.clicked:
                 if self.firstRun:
                     print(
                         "\nSleeping for 5 seconds while getting video stream started up"
@@ -210,31 +212,10 @@ class UserVision:
                     if not np.array_equal(lastImg, self.img) and self.takeImage:
                         lastImg = self.img
                         cv2.imwrite(
-                            f"{actualPATH}/img/{self.indexImgSave:05d}.jpg", self.img
+                            f"{actualPATH}/img/{self.indexImgSave:06d}_{self.control.drone_id}.jpg", self.img
                         )
                         self.indexImgSave += 1
                         self.takeImage = False
-
-    def safety(self):
-        # create a tk window with a button to land the drone always on top
-        import tkinter as tk
-
-        self.tkinterActive = True
-
-        self.root = tk.Tk()
-        self.root.attributes("-topmost", True)
-        self.root.title("Bebop2")
-        self.root.geometry("300x100")
-        self.root.configure(bg="white")
-
-        self.landButton = tk.Button(
-            self.root, text="Land", command=self.land, bg="red", fg="white"
-        )
-        self.landButton.pack(side=tk.LEFT)
-
-        self.root.protocol("WM_DELETE_WINDOW", self.safe_close)
-
-        self.root.mainloop()
 
     def land(self):
         print("EMERGENCY LANDING")
@@ -247,6 +228,11 @@ class UserVision:
         files = glob.glob(f"{actualPATH}/img/*")
         for f in files:
             os.remove(f)
+
+    def onMouse(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONUP:
+            self.clicked = True
+            self.safe_close()
 
 
 if __name__ == "__main__":
