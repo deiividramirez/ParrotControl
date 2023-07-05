@@ -77,6 +77,10 @@ class UserVision:
 
         self.clean()
 
+        self.tkinterActive = False
+        # self.safetyCheck = threading.Thread(target=self.safety)
+        # self.safetyCheck.start()
+
         self.getImagesThread = threading.Thread(target=self.getImages)
         self.saveImagesThread = threading.Thread(target=self.saveImages)
         self.getImagesState = True
@@ -94,11 +98,15 @@ class UserVision:
         while self.getImagesState:
             self.ret, self.img = self.actualVision.read()
             if self.img is not None:
+                self.takeImage = True
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
+                cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
+                cv2.resizeWindow("Actual image", 640, 360)
                 if self.imgAruco[1] is not None:
                     # print(
                     #     f"Aruco detected with ID's {sorted([i for i in self.imgAruco[1][:,0]])}"
                     # )
+                    # set window size
                     cv2.imshow(
                         "Actual image", Funcs.drawArucoPoints(self.img, self.imgAruco)
                     )
@@ -111,11 +119,13 @@ class UserVision:
         try:
             while True:
                 if self.firstRun:
-                    print("\nSleeping for 5 seconds while getting video stream started up")
+                    print(
+                        "\nSleeping for 5 seconds while getting video stream started up"
+                    )
                     time.sleep(5)
 
                     self.firstRun = False
-                    self.drone.safe_takeoff(5)
+                    # self.drone.safe_takeoff(5)
                     self.drone.ask_for_state_update()
 
                     print("\n\nBattery: ", self.drone.sensors.battery)
@@ -123,10 +133,9 @@ class UserVision:
 
                 print("In image function", self.index)
                 self.update()
-                time.sleep(1)
 
-                self.vels = np.tanh(self.control.getVels(self.img, self.imgAruco))
-                print("Vels: ", self.vels)
+                # self.vels = self.control.getVels(self.img, self.imgAruco)
+                # print("Vels: ", self.vels)
 
                 # self.drone.move_relative(
                 #     self.vels[0], self.vels[1], self.vels[2], self.vels[5]
@@ -139,14 +148,15 @@ class UserVision:
                 #     cv2.waitKey(1)
                 # self.drone.smart_sleep(2)
                 print("INDEX: ", self.index)
-                if self.index == 2:
+                time.sleep(1)
+                if self.index == 10:
                     print("\nClosing program")
                     self.safe_close()
                     break
-                
+
         except Exception as e:
             print(e)
-            self.drone.safe_land(5)
+            # self.drone.safe_land(5)
             self.safe_close()
         finally:
             self.safe_close()
@@ -157,7 +167,7 @@ class UserVision:
     def safe_close(self):
         print("\nSafely closing program and stopping drone...")
 
-        self.drone.safe_land(5)
+        # self.drone.safe_land(5)
 
         self.status = False
         self.getImagesState = False
@@ -171,6 +181,10 @@ class UserVision:
         self.drone.smart_sleep(2)
 
         self.drone.disconnect()
+
+        if self.tkinterActive:
+            self.root.destroy()
+            self.tkinterActive = False
 
     def saveImages(self):
         print("Starting thread to save images")
@@ -187,6 +201,32 @@ class UserVision:
                         )
                         self.indexImgSave += 1
                         self.takeImage = False
+
+    def safety(self):
+        # create a tk window with a button to land the drone always on top
+        import tkinter as tk
+
+        self.tkinterActive = True
+
+        self.root = tk.Tk()
+        self.root.attributes("-topmost", True)
+        self.root.title("Bebop2")
+        self.root.geometry("300x100")
+        self.root.configure(bg="white")
+
+        self.landButton = tk.Button(
+            self.root, text="Land", command=self.land, bg="red", fg="white"
+        )
+        self.landButton.pack(side=tk.LEFT)
+
+        self.root.protocol("WM_DELETE_WINDOW", self.safe_close)
+
+        self.root.mainloop()
+
+    def land(self):
+        print("EMERGENCY LANDING")
+        # self.drone.emergency_land()
+        self.safe_close()
 
     def clean(self):
         # delete all images in img folder
@@ -210,9 +250,7 @@ if __name__ == "__main__":
 
     desiredPath = f"{actualPATH}/data/desired_1f.jpg"
     desiredIMG = cv2.imread(desiredPath)
-    R = np.array([[0, 0, 1], 
-                  [1, 0, 0], 
-                  [0, 1, 0]])
+    R = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
     controlGUO = GUO.GUO(desiredIMG, 1, R)
 
     if connection:
@@ -221,7 +259,7 @@ if __name__ == "__main__":
             servo.loop()
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt has been caught.")
-            bebop.safe_land(5)
+            # bebop.safe_land(5)
             servo.user.safe_close()
     else:
         print("Error connecting to bebop. Retry")

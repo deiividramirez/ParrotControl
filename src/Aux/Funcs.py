@@ -73,7 +73,7 @@ def drawArucoPoints(img: np.ndarray, info: tuple) -> np.ndarray:
     corners, ids, rejectedImgPoints = info
     for i in range(len(ids)):
         for j in range(4):
-            cv2.circle(temp_img, tuple(corners[i][0][j]), 2, (0, 255, 0), -1)
+            cv2.circle(temp_img, tuple(corners[i][0][j]), 2, (0, 0, 255), -1)
     return temp_img
 
 def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
