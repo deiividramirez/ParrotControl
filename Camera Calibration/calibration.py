@@ -8,7 +8,7 @@ import pathlib
 
 PATH = pathlib.Path(__file__).parent.absolute()
 
-SAMPLES = 15
+SAMPLES = 20
 
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6, 9)
@@ -65,9 +65,9 @@ for fname in images:
         # Draw and display the corners
         img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
 
-    cv2.namedWindow("img", cv2.WINDOW_NORMAL)
-    cv2.imshow("img", img)
-    cv2.waitKey(1)
+        cv2.namedWindow("img", cv2.WINDOW_NORMAL)
+        cv2.imshow("img", img)
+        cv2.waitKey(1)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
@@ -90,7 +90,7 @@ distMat = []
 rvecsMat = []
 tvecsMat = []
 
-for i in (lend:=range(30)):
+for i in (lend:=range(100)):
     print(f"Calibrating... {(i+1):02d}/{len(lend):02d}", end="\r")
     # SAMPLES samples of imgpoints into tempimgpoints
     index = np.random.choice(len(imgpoints), SAMPLES, replace=False)
@@ -117,7 +117,7 @@ np.savetxt(f'{PATH}/distCoeffs.txt', dist)
 img = cv2.imread(images[0])
 h, w = img.shape[:2]
 print(f"\nHeight: {h}, Width: {w}\nCx: {w/2}, Cy: {h/2}\n")
-newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h), 0)
+newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 0, (w, h), 0)
 
 print("Camera matrix (after) : ")
 print(newcameramtx)

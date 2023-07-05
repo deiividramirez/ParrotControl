@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import cv2
 
 from pathlib import Path
@@ -31,10 +32,10 @@ class GUO:
         translational and rotational components of the control law.
 
         @Params:
-          img_desired: np.ndarray -> A (n,3) matrix with the desired image
-          drone_id: int -> A flag to know which drone is going to be used
-          RT: np.ndarray -> A (3,3) matrix with the rotation and translation
-                    for changing the reference frame from the camera to the drone
+            img_desired: np.ndarray -> A (n,3) matrix with the desired image
+            drone_id: int -> A flag to know which drone is going to be used
+            RT: np.ndarray -> A (3,3) matrix with the rotation and translation
+                for changing the reference frame from the camera to the drone
 
         @Returns:
           None
@@ -45,6 +46,13 @@ class GUO:
         self.drone_id = drone_id
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
+
+        self.initTime = 0
+        self.actualTime = 0
+
+        print(f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'}\n")
+
+        self.time = 0
 
         if self.getDesiredData() < 0:
             print("Desired ArUco not found")
@@ -58,7 +66,14 @@ class GUO:
         self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w")
         self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w")
         self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w")
-        # self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w")
+        self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w")
+
+        self.file_vel_x.write("0.0\n")
+        self.file_vel_y.write("0.0\n")
+        self.file_vel_z.write("0.0\n")
+        self.file_vel_yaw.write("0.0\n")
+        self.file_error.write("0.0\n")
+        self.file_time.write("0.0\n")
 
     def getDesiredData(self) -> int:
         """
@@ -135,7 +150,7 @@ class GUO:
         return 0
 
     def getDistances(
-        self, pointsActual: np.ndarray, pointsDesired: np.ndarray, CONTROL: int = 1
+        self, pointsActual: np.ndarray, pointsDesired: np.ndarray
     ) -> tuple:
         """
         This function returns the Euclidean distance between the points in the sphere with the unified model
@@ -144,7 +159,6 @@ class GUO:
         @Params:
           pointsActual: np.ndarray -> A (n,3) matrix with the actual points in the sphere
           pointsDesired: np.ndarray -> A (n,3) matrix with the desired points in the sphere
-          CONTROL: int -> A flag to choose between the control proposed in the paper (1) or the control proposed in the paper (2)
 
         @Returns:
           tuple -> A tuple with the distances and the error
@@ -162,7 +176,7 @@ class GUO:
 
                     distances.append(
                         dictDist(i, j, 1 / dist, 1 / dist2)
-                        if CONTROL == 1
+                        if self.yaml['control'] == 1
                         else dictDist(i, j, dist, dist2)
                     )
 
@@ -171,7 +185,7 @@ class GUO:
         return distances, np.array(error).reshape(len(error), 1)
 
     def laplacianGUO(
-        self, pointsSphere: np.ndarray, distances: dictDist, CONTROL: int = 1
+        self, pointsSphere: np.ndarray, distances: dictDist
     ):
         """
         This function returns the laplacian matrix for the GUO method in the paper "Image-based estimation, planning,
@@ -180,7 +194,6 @@ class GUO:
         @Params:
           pointsSphere: np.ndarray -> A (n,3) matrix with the points in the sphere
           distances: dictDist -> A list of dictionaries with the distances between the points in the sphere
-          CONTROL: int -> A flag to choose between the control proposed in the paper (1) or the control proposed in the paper (2)
 
         @Returns:
           L: np.ndarray -> A (n,3) matrix with the laplacian matrix
@@ -189,7 +202,7 @@ class GUO:
         L = np.zeros((n, 3))
 
         for i in range(n):
-            s = -distances[i].dist ** 3 if CONTROL == 1 else 1 / distances[i].dist
+            s = -distances[i].dist ** 3 if self.yaml['control'] == 1 else 1 / distances[i].dist
 
             temp = s * (
                 (pointsSphere[distances[i].i].reshape(1, 3))
@@ -215,15 +228,20 @@ class GUO:
           vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
         """
 
-        if np.all(self.storeImage == actualImage):
-            print("Same image")
-            return self.input
-        else:
-            self.storeImage = actualImage
+        if imgAruco is None:
+            print("ArUco not found")
+            return np.zeros((6,))
+
+        # if np.all(self.storeImage == actualImage):
+        #     print("Same image")
+        #     return self.input
+        # else:
+            # self.storeImage = actualImage
+        self.storeImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) == -1:
             print("ArUco not found")
-            return -1
+            return np.zeros((6,))
 
         self.distances, self.error = self.getDistances(
             self.actualData.inSphere, self.desiredData.inSphere
@@ -237,15 +255,18 @@ class GUO:
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3, :], self.rotAndTrans @ self.vels[3:, :]),
             axis=0,
-        )
+        ).reshape(6,)
 
-        self.file_vel_x.write(f"{self.input[0,0]}\n")
-        self.file_vel_y.write(f"{self.input[1,0]}\n")
-        self.file_vel_z.write(f"{self.input[2,0]}\n")
-        self.file_vel_yaw.write(f"{self.input[5,0]}\n")
+        self.actualTime = time.time() - self.initTime
 
-        self.file_error.write(f"{np.linalg.norm(self.error, ord=1)}\n")
+        self.file_vel_x.write(f"{self.input[0]}\n")
+        self.file_vel_y.write(f"{self.input[1]}\n")
+        self.file_vel_z.write(f"{self.input[2]}\n")
+        self.file_vel_yaw.write(f"{self.input[5]}\n")
+        self.file_time.write(f"{self.actualTime}\n")
 
+        self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+        print("Error: ", error)
         return self.input
 
     def close(self):
@@ -257,22 +278,22 @@ class GUO:
 
 
 if __name__ == "__main__":
-    img = cv2.imread(f"{PATH}/data/desired_1f.jpg")
+    img = cv2.imread(f"{PATH}/data/desired_1.jpg")
     guo = GUO(img, 1)
 
     # GUO good example
     print(
         guo.getVels(
-            cv2.imread(f"{PATH}/data/desired_1f.jpg"),
-            get_aruco(cv2.imread(f"{PATH}/data/desired_1f.jpg"), 4),
+            cv2.imread(f"{PATH}/data/desired_1.jpg"),
+            get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
         )
     )
 
     # GUO bad example
     print(
         guo.getVels(
-            cv2.imread(f"{PATH}/data/desired_2f.jpg"),
-            get_aruco(cv2.imread(f"{PATH}/data/desired_2f.jpg"), 4),
+            cv2.imread(f"{PATH}/data/desired_2.jpg"),
+            get_aruco(cv2.imread(f"{PATH}/data/desired_2.jpg"), 4),
         )
     )
 

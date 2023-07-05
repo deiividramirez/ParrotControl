@@ -65,6 +65,7 @@ class UserVision:
         self.imgAruco = None
         self.takeImage = False
         self.firstRun = True
+        self.thereIsAruco = False
 
         self.drone.set_video_stream_mode("high_reliability")
         self.drone.set_video_framerate("30_FPS")
@@ -98,7 +99,7 @@ class UserVision:
         while self.getImagesState:
             self.ret, self.img = self.actualVision.read()
             if self.img is not None:
-                self.takeImage = True
+                # self.takeImage = True
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
                 cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
                 cv2.resizeWindow("Actual image", 640, 360)
@@ -111,8 +112,10 @@ class UserVision:
                         "Actual image", Funcs.drawArucoPoints(self.img, self.imgAruco)
                     )
                     self.takeImage = True
+                    self.thereIsAruco = True
                 else:
                     cv2.imshow("Actual image", self.img)
+                    self.thereIsAruco = False
                 cv2.waitKey(1)
 
     def ImageFunction(self, args):
@@ -131,11 +134,18 @@ class UserVision:
                     print("\n\nBattery: ", self.drone.sensors.battery)
                     print("Flying state: ", self.drone.sensors.flying_state, "\n\n")
 
-                print("In image function", self.index)
+                    self.initTime = self.control.initTime = time.time()
+
+                print("\nIn image function", self.index)
                 self.update()
 
-                # self.vels = self.control.getVels(self.img, self.imgAruco)
-                # print("Vels: ", self.vels)
+                if self.thereIsAruco:
+                    self.vels = self.control.getVels(self.img, self.imgAruco)
+                else:
+                    self.vels = [0, 0, 0, 0, 0, 0]
+                    
+                print("Vels: ", self.vels)
+                print("Time in control: ", self.control.actualTime)
 
                 # self.drone.move_relative(
                 #     self.vels[0], self.vels[1], self.vels[2], self.vels[5]
@@ -148,11 +158,14 @@ class UserVision:
                 #     cv2.waitKey(1)
                 # self.drone.smart_sleep(2)
                 print("INDEX: ", self.index)
-                time.sleep(1)
-                if self.index == 10:
+                time.sleep(.1)
+                actualTime = time.time() - self.initTime
+                if self.index >= 10 and (actualTime) > 10:
                     print("\nClosing program")
                     self.safe_close()
                     break
+                else:
+                    print(f"Time: {actualTime}")
 
         except Exception as e:
             print(e)
@@ -240,6 +253,13 @@ if __name__ == "__main__":
     # Make my bebop object
     bebop = Bebop(drone_type="Bebop2")
 
+    desiredPath = f"{actualPATH}/data/desired_1.jpg"
+    desiredIMG = cv2.imread(desiredPath)
+    R = np.array([[0, 0, 1], 
+                  [1, 0, 0], 
+                  [0, 1, 0]])
+    controlGUO = GUO.GUO(desiredIMG, 1, R)
+    
     # Connect to the bebop
     connection = bebop.connect(5)
     bebop.start_video_stream()
@@ -248,10 +268,6 @@ if __name__ == "__main__":
     bebop.set_max_tilt(5)
     bebop.set_max_vertical_speed(1)
 
-    desiredPath = f"{actualPATH}/data/desired_1f.jpg"
-    desiredIMG = cv2.imread(desiredPath)
-    R = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
-    controlGUO = GUO.GUO(desiredIMG, 1, R)
 
     if connection:
         servo = successConnection(bebop, controlGUO)

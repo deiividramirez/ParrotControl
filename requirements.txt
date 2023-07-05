@@ -10,3 +10,4 @@ PyYAML==6.0
 setuptools==65.5.0
 untangle==1.2.1
 zeroconf==0.25.0
+matplotlib==3.7.2
