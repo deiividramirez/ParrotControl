@@ -8,6 +8,8 @@ import pathlib
 
 PATH = pathlib.Path(__file__).parent.absolute()
 
+SAMPLES = 15
+
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6, 9)
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -25,13 +27,17 @@ prev_img_shape = None
 
 # Extracting path of individual image stored in a given directory
 images = sorted(
-    [f"{i}" for i in glob.glob(f"{PATH}/*.jpg")],
+    [f"{i}" for i in glob.glob(f"{PATH}/img/*.jpg")],
     key=lambda x: int(x.split("/")[-1].split(".")[0]),
 )
-print(images)
+print(f"Found {len(images)} images in {PATH}\n")
+
+if len(images) < SAMPLES:
+    print("Not enough images to calibrate camera")
+    exit()
 
 for fname in images:
-    print(fname)
+    print(f"Loading {fname.split('/')[-1]}... out of {images[-1].split('/')[-1]}", end="\r")
     img = cv2.imread(fname)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Find the chess board corners
@@ -65,6 +71,7 @@ for fname in images:
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+print("\n")
 
 img = cv2.imread(images[0])
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -85,8 +92,8 @@ tvecsMat = []
 
 for i in (lend:=range(30)):
     print(f"Calibrating... {(i+1):02d}/{len(lend):02d}", end="\r")
-    # 25 samples of imgpoints into tempimgpoints
-    index = np.random.choice(len(imgpoints), 25, replace=False)
+    # SAMPLES samples of imgpoints into tempimgpoints
+    index = np.random.choice(len(imgpoints), SAMPLES, replace=False)
     tempimgpoints = [imgpoints[i] for i in index]
     tempobjpoints = [objpoints[i] for i in index]
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
@@ -94,32 +101,28 @@ for i in (lend:=range(30)):
     )
     mtxMat.append(mtx)
     distMat.append(dist)
-    rvecsMat.append(rvecs)
-    tvecsMat.append(tvecs)
 
 mtx = np.mean(mtxMat, axis=0)
 dist = np.mean(distMat, axis=0)
-rvecs = np.mean(rvecsMat, axis=0)
-tvecs = np.mean(tvecsMat, axis=0)
 
 print("Camera matrix (before) : ")
 print(mtx)
 print("dist (before) : ")
 print(dist)
 
+np.savetxt(f'{PATH}/cameraMatrix.txt', mtx)
+np.savetxt(f'{PATH}/distCoeffs.txt', dist)
+
 # Try to undistort one of the images
 img = cv2.imread(images[0])
 h, w = img.shape[:2]
 print(f"\nHeight: {h}, Width: {w}\nCx: {w/2}, Cy: {h/2}\n")
-newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h), 0)
 
 print("Camera matrix (after) : ")
 print(newcameramtx)
 print("dist (after) : ")
 print(roi)
-
-np.savetxt(f'{PATH}/cameraMatrix.txt', newcameramtx)
-np.savetxt(f'{PATH}/distCoeffs.txt', dist)
 
 # undistort
 dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
@@ -133,7 +136,7 @@ cv2.imwrite(f"{PATH}/calibresult.png", dst)
 # Reprojection error
 mean_error = 0
 for i in range(len(rvecs)):
-    imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
+    imgpoints2, _ = cv2.projectPoints(tempobjpoints[i], rvecs[i], tvecs[i], mtx, dist)
     error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
     mean_error += error
 
