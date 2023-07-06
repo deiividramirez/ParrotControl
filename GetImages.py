@@ -267,6 +267,7 @@ class UserVision:
 
     def onMouse(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONUP:
+            print(f"[CLICK] Clicked on screen. Stopping drone #{self.droneID}")
             self.clicked = True
             self.safe_close()
 
