@@ -46,16 +46,7 @@ else:
         # intz = np.loadtxt(f"{PATH}/out/drone_{dron}.txt")
 
         NUM = 0
-        try:
-            if len(vx) < 3:
-                exit()
-        except:
-            exit()
-        for i in range(2, len(vx)):
-            if np.linalg.norm(vx[i] - vx[i - 1]) > 1e-3:
-                NUM = i
-                break
-
+        
         print(
             f"""
 Drone {dron}

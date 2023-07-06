@@ -60,12 +60,12 @@ class GUO:
         self.actualTime = 0
 
         # open the file to save the data of the control law
-        self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w")
-        self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w")
-        self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w")
-        self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w")
-        self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w")
-        self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w")
+        self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
+        self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
+        self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w+")
+        self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w+")
+        self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w+")
+        self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w+")
 
         self.file_vel_x.write("0.0\n")
         self.file_vel_y.write("0.0\n")

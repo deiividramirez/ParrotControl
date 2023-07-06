@@ -207,13 +207,15 @@ class UserVision:
 
     def getImages(self):
         print("[THREAD] Starting thread to get images")
+        
+        cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
+        cv2.setMouseCallback("Actual image", self.onMouse)
+        cv2.resizeWindow("Actual image", 640, 360)
+
         while self.getImagesState:
             self.ret, self.img = self.actualVision.read()
             if self.img is not None:
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
-                cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
-                cv2.setMouseCallback("Actual image", self.onMouse)
-                cv2.resizeWindow("Actual image", 640, 360)
                 if self.imgAruco[1] is not None:
                     cv2.imshow(
                         "Actual image", Funcs.drawArucoPoints(self.img, self.imgAruco)
