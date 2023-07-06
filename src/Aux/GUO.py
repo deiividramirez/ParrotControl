@@ -47,18 +47,17 @@ class GUO:
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
-        self.initTime = 0
-        self.actualTime = 0
-
-        print(f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'}\n")
-
-        self.time = 0
+        print(
+            f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'}\n"
+        )
 
         if self.getDesiredData() < 0:
             print("Desired ArUco not found")
             exit()
 
         self.storeImage = None
+        self.initTime = 0
+        self.actualTime = 0
 
         # open the file to save the data of the control law
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w")
@@ -74,6 +73,9 @@ class GUO:
         self.file_vel_yaw.write("0.0\n")
         self.file_error.write("0.0\n")
         self.file_time.write("0.0\n")
+    
+    def __name__(self) -> str:
+        return "GUO: 1/dist" if self.yaml["control"] == 1 else "GUO: dist"
 
     def getDesiredData(self) -> int:
         """
@@ -176,7 +178,7 @@ class GUO:
 
                     distances.append(
                         dictDist(i, j, 1 / dist, 1 / dist2)
-                        if self.yaml['control'] == 1
+                        if self.yaml["control"] == 1
                         else dictDist(i, j, dist, dist2)
                     )
 
@@ -184,9 +186,7 @@ class GUO:
         error = [distance.dist2 - distance.dist for distance in distances]
         return distances, np.array(error).reshape(len(error), 1)
 
-    def laplacianGUO(
-        self, pointsSphere: np.ndarray, distances: dictDist
-    ):
+    def laplacianGUO(self, pointsSphere: np.ndarray, distances: dictDist):
         """
         This function returns the laplacian matrix for the GUO method in the paper "Image-based estimation, planning,
         and control for high-speed flying through multiple openings".
@@ -202,7 +202,11 @@ class GUO:
         L = np.zeros((n, 3))
 
         for i in range(n):
-            s = -distances[i].dist ** 3 if self.yaml['control'] == 1 else 1 / distances[i].dist
+            s = (
+                -distances[i].dist ** 3
+                if self.yaml["control"] == 1
+                else 1 / distances[i].dist
+            )
 
             temp = s * (
                 (pointsSphere[distances[i].i].reshape(1, 3))
@@ -236,7 +240,7 @@ class GUO:
         #     print("Same image")
         #     return self.input
         # else:
-            # self.storeImage = actualImage
+        # self.storeImage = actualImage
         self.storeImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) == -1:
@@ -253,27 +257,34 @@ class GUO:
         self.vels = np.concatenate((self.Lp @ self.error, np.zeros((3, 1))), axis=0)
 
         self.input = np.concatenate(
-            (self.rotAndTrans @ self.vels[:3, :], self.rotAndTrans @ self.vels[3:, :]),
+            (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
-        ).reshape(6,)
+        ).reshape((6,))
 
         self.actualTime = time.time() - self.initTime
+        self.save()
 
-        self.file_vel_x.write(f"{self.input[0]}\n")
-        self.file_vel_y.write(f"{self.input[1]}\n")
-        self.file_vel_z.write(f"{self.input[2]}\n")
-        self.file_vel_yaw.write(f"{self.input[5]}\n")
-        self.file_time.write(f"{self.actualTime}\n")
-
-        self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
-        print("Error: ", error)
         return self.input
+
+    def save(self):
+        try:
+            self.file_vel_x.write(f"{self.input[0]}\n")
+            self.file_vel_y.write(f"{self.input[1]}\n")
+            self.file_vel_z.write(f"{self.input[2]}\n")
+            self.file_vel_yaw.write(f"{self.input[5]}\n")
+            self.file_time.write(f"{self.actualTime}\n")
+
+            self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+            print("Error: ", error)
+        except Exception as e:
+            print("Error writing in the file: ", e)
 
     def close(self):
         self.file_vel_x.close()
         self.file_vel_y.close()
         self.file_vel_z.close()
         self.file_vel_yaw.close()
+        self.file_time.close()
         self.file_error.close()
 
 

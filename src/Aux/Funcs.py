@@ -41,7 +41,7 @@ def load_yaml(PATH, drone_id) -> dict:
         temp["camera_intrinsic_parameters"] = np.array(
             temp["camera_intrinsic_parameters"]).reshape(3, 3)
         temp["seguimiento"] = np.array(temp["seguimiento"])
-        temp["bearings"] = np.array(temp["bearings"], dtype=np.float32).reshape(-1, 3)
+        # temp["bearings"] = np.array(temp["bearings"], dtype=np.float32).reshape(-1, 3)
 
         temp["inv_camera_intrinsic_parameters"] = np.linalg.inv(
             temp["camera_intrinsic_parameters"])
@@ -89,4 +89,4 @@ def normalize(x: np.ndarray) -> np.ndarray:
 
 def ortoProj(x: np.ndarray) -> np.ndarray:
     temp = x.reshape(3, 1)
-    return np.eye(3) - temp @ temp.T
+    return np.eye(3) - (temp @ temp.T)/np.linalg.norm(temp)**2
