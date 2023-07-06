@@ -102,11 +102,12 @@ class UserVision:
                 if self.firstRun:
                     print(
                         "\n[INFO] Sleeping for 5 seconds while getting video stream started up",
-                        "\n\n ** DO NOT CLOSE THE PROGRAM UNTIL SLEEP IS DONE **" 
                     )
-                    
+
                     for i in range(5):
-                        print(f"[INFO] {5-i} seconds left", end="\r")
+                        print(
+                            f"[INFO] << ** DO NOT CLOSE THE PROGRAM UNTIL SLEEP IS DONE ** >> {5-i} seconds left"
+                        )
                         time.sleep(1)
 
                     self.firstRun = False
@@ -121,7 +122,9 @@ class UserVision:
                     self.initTime = self.control.initTime = time.time()
 
                 actualTime = time.time() - self.initTime
-                if (actualTime) > (self.yaml["MAX_TIME"]) or self.index >= (self.yaml["MAX_ITER"]):
+                if (actualTime) > (self.yaml["MAX_TIME"]) or self.index >= (
+                    self.yaml["MAX_ITER"]
+                ):
                     cols, rows = os.get_terminal_size(0)
                     print("\n\n\n", "%" * (cols - 2))
                     print("[CLOSING] Closing program", end="")
@@ -131,9 +134,15 @@ class UserVision:
                 else:
                     cols, rows = os.get_terminal_size(0)
                     print("\n", "=" * (cols - 2))
-                    print(f'[INFO] Using control: "{self.control.__name__()}" for drone # {self.droneID}\n')
-                    print(f"[INFO] General time: {actualTime:.2f} seconds out of {self.yaml['MAX_TIME']:.2f} seconds")
-                    print(f'[INFO] Iteration {self.index:>6} out of {self.yaml["MAX_ITER"]}\n')
+                    print(
+                        f'[INFO] Using control: "{self.control.__name__()}" for drone # {self.droneID}\n'
+                    )
+                    print(
+                        f"[INFO] General time: {actualTime:.2f} seconds out of {self.yaml['MAX_TIME']:.2f} seconds"
+                    )
+                    print(
+                        f'[INFO] Iteration {self.index:>6} out of {self.yaml["MAX_ITER"]}\n'
+                    )
                     self.update()
 
                 if self.thereIsAruco:
@@ -207,7 +216,7 @@ class UserVision:
 
     def getImages(self):
         print("[THREAD] Starting thread to get images")
-        
+
         cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
         cv2.setMouseCallback("Actual image", self.onMouse)
         cv2.resizeWindow("Actual image", 640, 360)
@@ -252,7 +261,7 @@ class UserVision:
     def clean(self):
         # delete all images in img folder
         print("[CLEAN] Cleaning img folder")
-        files = glob.glob(f"{actualPATH}/img/*")
+        files = glob.glob(f"{actualPATH}/img/*.jpg")
         for f in files:
             os.remove(f)
 
@@ -266,13 +275,12 @@ if __name__ == "__main__":
     # Rotation matrix from camera's frame to drone's frame
     R = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
 
-    # Charge the desired images
-    # controlGUO = GUO.GUO(
-    #     cv2.imread(f"{actualPATH}/data/desired_1.jpg"), 1, R
-    # )
-    controlBEARING = BO.BearingOnly(
-        cv2.imread(f"{actualPATH}/data/desired_1.jpg"), 1, R
-    )
+    YALM = Funcs.loadGeneralYaml(actualPATH)
+
+    if YALM["Leader_Follower"]:
+        control = GUO.GUO(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
+    else:
+        control = BO.BearingOnly(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
 
     # Make my bebop object
     bebop = Bebop(drone_type="Bebop2")
@@ -287,7 +295,7 @@ if __name__ == "__main__":
 
     if connection:
         # servo = successConnection(bebop, controlGUO)
-        servo = successConnection(bebop, controlBEARING)
+        servo = successConnection(bebop, control)
         try:
             servo.loop()
         except KeyboardInterrupt:

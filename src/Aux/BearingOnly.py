@@ -68,9 +68,9 @@ class BearingOnly:
         self.file_vel_yaw.write("0.0\n")
         self.file_error.write("0.0\n")
         self.file_time.write("0.0\n")
-    
+
     def __name__(self) -> str:
-        return "BearingOnly"
+        return "BearingOnly (-P_gij * gij*)" if self.yaml["control"] == 1 else "BearingOnly (gij - gij*)"
 
     def getDesiredData(self) -> int:
         """
@@ -223,7 +223,9 @@ class BearingOnly:
 
         if self.getActualData(actualImage, imgAruco) == -1:
             print("ArUco not found")
-            return np.zeros((6,))
+            self.input = np.zeros((6,))
+            self.save()
+            return self.input
 
         print("Desired bearings", self.desiredData.bearings)
         print("Actual bearings", self.actualData.bearings)
@@ -236,7 +238,11 @@ class BearingOnly:
 
         U = np.zeros((3, 1))
         for i in range(self.actualData.bearings.shape[0]):
-            temp = -ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i]
+            temp = (
+                -ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i]
+                if self.yaml["control"] == 1
+                else self.actualData.bearings[i] - self.desiredData.bearings[i]
+            )
             U += temp.reshape(-1, 1)
 
         self.vels = np.concatenate((U, np.zeros((3, 1))), axis=0)
@@ -244,9 +250,7 @@ class BearingOnly:
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
-        ).reshape(
-            6,
-        )
+        ).reshape((6,))
 
         self.actualTime = time.time() - self.initTime
         self.save()
