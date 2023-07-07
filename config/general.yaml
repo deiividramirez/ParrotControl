@@ -3,7 +3,7 @@ SAVE_IMAGES: 1
 SHOW_IMAGES: 0
 
 MAX_ITER: 2000 # (iterations int)
-MAX_TIME: 10.0 # (seconds float)
+MAX_TIME: 15.0 # (seconds float)
 
 Leader_Follower: 0 # 0: Leader, 1: Follower
 

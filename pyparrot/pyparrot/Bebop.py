@@ -337,17 +337,23 @@ class Bebop():
         """
         start_time = time.time()
 
-        while (self.sensors.flying_state not in ("landing", "landed") and (time.time() - start_time < timeout)):
+        while (self.sensors.flying_state not in ("landing", "landed") and (actualTime:=(time.time() - start_time < timeout))):
             if (self.sensors.flying_state == "emergency"):
-                return
+                return -1
             color_print("trying to land", "INFO")
             success = self.land()
             self.smart_sleep(1)
 
-        while (self.sensors.flying_state != "landed" and (time.time() - start_time < timeout)):
+        while (self.sensors.flying_state != "landed" and (actualTime:=(time.time() - start_time < timeout))):
             if (self.sensors.flying_state == "emergency"):
-                return
+                return -1
             self.smart_sleep(1)
+
+        if (self.sensors.flying_state == "landed"):
+            return 1
+        if (not actualTime):
+            return -1
+        return 0
 
     def smart_sleep(self, timeout):
         """

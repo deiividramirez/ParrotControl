@@ -54,6 +54,7 @@ class BearingOnly:
         self.storeImage = None
         self.initTime = 0
         self.actualTime = 0
+        self.error = np.zeros((1,6))
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
@@ -70,7 +71,11 @@ class BearingOnly:
         self.file_time.write("0.0\n")
 
     def __name__(self) -> str:
-        return "BearingOnly (-P_gij * gij*)" if self.yaml["control"] == 1 else "BearingOnly (gij - gij*)"
+        return (
+            "BearingOnly (-P_gij * gij*)"
+            if self.yaml["control"] == 1
+            else "BearingOnly (gij - gij*)"
+        )
 
     def getDesiredData(self) -> int:
         """
@@ -181,26 +186,6 @@ class BearingOnly:
             points / np.linalg.norm(points) if np.linalg.norm(points) != 0 else points
         )
 
-    # def laplacianBearing(self, actualBearings: np.ndarray):
-    #   """
-    #   This function returns the laplacian matrix for the GUO method in the paper "Image-based estimation, planning,
-    #   and control for high-speed flying through multiple openings".
-
-    #   @Params:
-    #     actualBearing: np.ndarray -> A (n,3) matrix with the actual bearing in the sphere
-
-    #   @Returns:
-    #     L: np.ndarray -> A (n,3) matrix with the laplacian matrix
-    #   """
-    #   n = actualBearings.shape[0]
-    #   L = np.zeros((n, 3))
-
-    #   for i in range(n):
-    #     temp = - ortoProj(actualBearings[i, :]) @ self.desiredData.bearings[i, :]
-    #     L[i, :] = temp
-
-    #   return L
-
     def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
         """
         This function returns the velocities of the drones in the drone's frame
@@ -222,7 +207,7 @@ class BearingOnly:
         self.storeImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) == -1:
-            print("ArUco not found")
+            print("[ERROR] Some ArUco's were not found")
             self.input = np.zeros((6,))
             self.save()
             return self.input
@@ -231,10 +216,6 @@ class BearingOnly:
         print("Actual bearings", self.actualData.bearings)
 
         self.error = self.actualData.bearings - self.desiredData.bearings
-        # print(self.actualData.bearings)
-        # print(self.desiredData.bearings)
-        # print(self.error, np.linalg.norm(self.error,ord=1))
-        # exit()
 
         U = np.zeros((3, 1))
         for i in range(self.actualData.bearings.shape[0]):
@@ -252,20 +233,29 @@ class BearingOnly:
             axis=0,
         ).reshape((6,))
 
-        self.actualTime = time.time() - self.initTime
         self.save()
 
         return self.input
 
     def save(self):
+        # print("[INFO] Saving data")
+        self.actualTime = time.time() - self.initTime
         try:
             self.file_vel_x.write(f"{self.input[0]}\n")
             self.file_vel_y.write(f"{self.input[1]}\n")
             self.file_vel_z.write(f"{self.input[2]}\n")
             self.file_vel_yaw.write(f"{self.input[5]}\n")
             self.file_time.write(f"{self.actualTime}\n")
-
             self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+
+            # print(f"x: {self.input[0]}",
+            #         f"y: {self.input[1]}",
+            #         f"z: {self.input[2]}",
+            #         f"yaw: {self.input[5]}",
+            #         f"error: {error:.5f}",
+            #         f"time: {self.actualTime:.2f}",
+            #         sep="\t")
+
             print("[INFO] Error: ", error)
         except Exception as e:
             print("Error writing in file: ", e)

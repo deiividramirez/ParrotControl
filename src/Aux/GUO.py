@@ -261,12 +261,12 @@ class GUO:
             axis=0,
         ).reshape((6,))
 
-        self.actualTime = time.time() - self.initTime
         self.save()
 
         return self.input
 
     def save(self):
+        self.actualTime = time.time() - self.initTime
         try:
             self.file_vel_x.write(f"{self.input[0]}\n")
             self.file_vel_y.write(f"{self.input[1]}\n")
