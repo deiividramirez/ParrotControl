@@ -132,7 +132,7 @@ class GUO:
             if imgAruco[1] is not None and seg in imgAruco[1]:
                 self.actualData.feature.append(imgAruco[0][index][0])
             else:
-                print("ArUco not found")
+                # print("ArUco not found")
                 return -1
         self.actualData.feature = np.array(
             self.actualData.feature, dtype=np.int32

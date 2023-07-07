@@ -46,8 +46,19 @@ class successConnection:
 
         self.user.ImageFunction(0)
 
-        print("[INFO] Closing from 'successConnection' class")
+        print(
+            f"\n{Fore.CYAN}[INFO] Closing from 'successConnection' class...{Style.RESET_ALL}"
+        )
         self.user.safe_close()
+        self.user.safe_close()
+
+        print(">> Stopping video stream...")
+        self.user.drone.stop_video_stream()
+
+        print(">> Disconnecting drone...")
+        # self.drone.smart_sleep(2)
+        self.user.drone.disconnect()
+        self.user.drone.drone_connection.disconnect()
 
 
 class UserVision:
@@ -91,7 +102,7 @@ class UserVision:
         if self.yaml["SAVE_IMAGES"]:
             self.saveImagesThread.start()
 
-        print(f"{Fore.GREEN}[INFO] Class UserVision created{Style.RESET_ALL}")
+        print(f"\t{Fore.GREEN}[INFO] Class UserVision created{Style.RESET_ALL}")
 
     def ImageFunction(self, args):
         cols, rows = os.get_terminal_size(0)
@@ -107,11 +118,7 @@ class UserVision:
                     print(
                         f"\n\n\n{Fore.RED}[EMERGENCY] ** Emergency landing **{Style.RESET_ALL}"
                     )
-                    if self.drone.safe_land(5) < 0:
-                        print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
-                        self.drone.emergency_land()
-                    else:
-                        print(f"{Fore.GREEN}[INFO] Drone landed{Style.RESET_ALL}")
+                    self.land()
                     self.safe_close()
                     break
 
@@ -121,26 +128,31 @@ class UserVision:
                     )
 
                     for i in range(5):
-                        print(f"[INFO] >> {5-i} seconds left", end="\r")
+                        print(f"[INFO] << {5-i} seconds left >>", end="\r")
                         if self.clicked:
                             break
                         time.sleep(1)
+
+                    if self.clicked:
+                        break
 
                     self.firstRun = False
                     self.drone.set_max_tilt(5)
                     self.drone.set_max_vertical_speed(1)
 
-                    print(f"{Fore.GREEN}[INFO] Safe takeoff{Style.RESET_ALL}")
-                    # self.drone.safe_takeoff(5)
+                    if self.yaml["takeoff"] and not self.clicked:
+                        print(f"\t{Fore.GREEN}[INFO] Safe takeoff{Style.RESET_ALL}")
+                        self.drone.safe_takeoff(5)
 
                     print("\n\nBattery: ", self.drone.sensors.battery)
                     print("Flying state: ", self.drone.sensors.flying_state, "\n\n")
 
-                    self.initTime = self.control.initTime = time.time()
-
                     if self.clicked:
                         break
 
+                    self.initTime = self.control.initTime = time.time()
+
+                #################################################################################
                 actualTime = time.time() - self.initTime
                 if (
                     actualTime > (self.yaml["MAX_TIME"])
@@ -177,66 +189,16 @@ class UserVision:
                 time.sleep(0.1)
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")
-            # self.drone.emergency_land()
             self.safe_close()
         finally:
-            print(">> Finally -> Closing program...")
             self.safe_close()
+            print("[INFO] try 'finally' closed the program...")
 
     def update(self):
         self.index += 1
 
-    def safe_close(self):
-        print("\n\n[INFO] Safely closing program and stopping drone...")
-        self.clicked = True
-
-        print(">> Closing files...")
-        self.control.close()
-
-        print(
-            f">> Landing drone... ",
-            f"Actual state of drone: {Fore.RED}{self.drone.sensors.flying_state}{Style.RESET_ALL}",
-        )
-        if self.drone.safe_land(5) < 0:
-            print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
-            self.drone.emergency_land()
-        else:
-            print(f"{Fore.GREEN}[INFO] Drone landed{Style.RESET_ALL}")
-
-        print(">> Closing threads...")
-        self.status = False
-        self.getImagesState = False
-        self.vision.vision_running = False
-
-        try:
-            self.getImagesThread.join()
-        except Exception as e:
-            print(
-                f"{Fore.RED}[ERROR] Error joining func 'getImagesThread': e -> {e}{Style.RESET_ALL}"
-            )
-        try:
-            self.saveImagesThread.join()
-        except Exception as e:
-            print(
-                f"{Fore.RED}[ERROR] Error joining func 'saveImagesThread': e -> {e}{Style.RESET_ALL}"
-            )
-
-        print(">> Closing OpenCV windows...")
-        cv2.destroyAllWindows()
-
-        print(">> Closing vision...")
-        self.actualVision.release()
-        self.drone.stop_video_stream()
-
-        print(">> Disconnecting drone...")
-        # self.drone.smart_sleep(2)
-        self.drone.disconnect()
-        self.drone.drone_connection.disconnect()
-
-        print(f"{Fore.CYAN}[INFO] safe_close() finished\n{Style.RESET_ALL}")
-
     def getImages(self):
-        print(f"{Fore.GREEN}[THREAD] Starting thread to get images{Style.RESET_ALL}")
+        print(f"\t{Fore.GREEN}[THREAD] Starting thread to get images{Style.RESET_ALL}")
 
         cv2.namedWindow("Actual image", cv2.WINDOW_NORMAL)
         cv2.setMouseCallback("Actual image", self.onMouse)
@@ -263,10 +225,21 @@ class UserVision:
                     self.thereIsAruco = False
                 cv2.waitKey(1)
 
-        cv2.destroyAllWindows()
+        try:
+            print("[INFO] Closing camera's from 'getImages' thread...")
+            self.actualVision.release()
+
+            cv2.destroyAllWindows()
+            print(
+                f"\t{Fore.GREEN}[THREAD] 'getImages' thread finished{Style.RESET_ALL}"
+            )
+        except Exception as e:
+            print(
+                f"{Fore.RED}[ERROR] Error closing video from camera: e -> {e}{Style.RESET_ALL}"
+            )
 
     def saveImages(self):
-        print(f"{Fore.GREEN}[THREAD] Starting thread to save images{Style.RESET_ALL}")
+        print(f"\t{Fore.GREEN}[THREAD] Starting thread to save images{Style.RESET_ALL}")
         lastImg = None
         while self.getImagesState and not self.clicked:
             if self.img is not None:
@@ -282,10 +255,7 @@ class UserVision:
                         self.indexImgSave += 1
                         self.takeImage = False
 
-    def land(self):
-        print("[LANDING] >> EMERGENCY LANDING << ")
-        # self.drone.emergency_land()
-        self.safe_close()
+        print(f"\t{Fore.GREEN}[THREAD] 'saveImages' thread finished{Style.RESET_ALL}")
 
     def clean(self):
         # delete all images in img folder
@@ -299,10 +269,38 @@ class UserVision:
             cols, rows = os.get_terminal_size(0)
             print(
                 f"\n\n{Fore.RED}{'=' * (cols - 4)}\n{Style.RESET_ALL}\n",
-                f"{Fore.GREEN}[CLICK] Clicked on screen. Stopping drone #{self.droneID}{Style.RESET_ALL}",
+                f"\t{Fore.GREEN}[CLICK] Clicked on screen. Stopping drone #{self.droneID}{Style.RESET_ALL}",
             )
             self.clicked = True
             self.safe_close()
+
+    def safe_close(self):
+        print("\n\n[INFO] Safely closing program and stopping drone...")
+        self.clicked = True
+
+        if self.status:
+            print(">> Closing files...")
+            self.control.close()
+
+        print(
+            f">> Landing drone... \n",
+            f"\tActual state of drone: {Fore.RED}{self.drone.sensors.flying_state}{Style.RESET_ALL}",
+        )
+        self.land()
+
+        print(">> Closing vision...")
+        self.status = False
+        self.getImagesState = False
+        self.vision.vision_running = False
+
+        print(f"{Fore.CYAN}[INFO] safe_close() finished\n{Style.RESET_ALL}")
+
+    def land(self):
+        if self.drone.safe_land(5) < 0:
+            print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
+            self.drone.emergency_land()
+        else:
+            print(f"\t{Fore.GREEN}[INFO] Drone landed{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
