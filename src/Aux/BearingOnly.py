@@ -47,6 +47,10 @@ class BearingOnly:
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
+        print(
+            f"[INFO] Control law {'-P_gij * gij*' if self.yaml['control'] == 1 else 'gij - gij*'}"
+        )
+
         if self.getDesiredData() < 0:
             print("Desired ArUco not found")
             exit()
@@ -54,7 +58,7 @@ class BearingOnly:
         self.storeImage = None
         self.initTime = 0
         self.actualTime = 0
-        self.error = np.zeros((1,6))
+        self.error = np.zeros((1, 6))
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
@@ -95,9 +99,8 @@ class BearingOnly:
             if temp[1] is not None and seg in temp[1]:
                 self.desiredData.feature.append(temp[0][index][0])
             else:
+                print("ArUco not found")
                 return -1
-
-        # self.desiredData.bearings = self.middlePoint(self.desiredData.feature)
         self.desiredData.feature = np.array(
             self.desiredData.feature, dtype=np.int32
         ).reshape(-1, 2)
@@ -139,8 +142,8 @@ class BearingOnly:
             if imgAruco[1] is not None and seg in imgAruco[1]:
                 self.actualData.feature.append(imgAruco[0][index][0])
             else:
+                print("ArUco not found")
                 return -1
-
         self.actualData.feature = np.array(
             self.actualData.feature, dtype=np.int32
         ).reshape(-1, 2)
@@ -258,7 +261,7 @@ class BearingOnly:
 
             print("[INFO] Error: ", error)
         except Exception as e:
-            print("Error writing in file: ", e)
+            print("[ERROR] Error writing in file: ", e)
 
     def close(self):
         self.file_vel_x.close()
@@ -271,23 +274,21 @@ class BearingOnly:
 
 if __name__ == "__main__":
     img = cv2.imread(f"{PATH}/data/desired_1.jpg")
-    bear = BearingOnly(img, 1)
+    control = BearingOnly(img, 1)
 
-    # Bearing-only good example
     print(
-        bear.getVels(
+        control.getVels(
             cv2.imread(f"{PATH}/data/desired_1.jpg"),
             get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
         )
     )
 
-    # Bearing-only bad example
     print(
-        bear.getVels(
+        control.getVels(
             cv2.imread(f"{PATH}/data/desired_2.jpg"),
             get_aruco(cv2.imread(f"{PATH}/data/desired_2.jpg"), 4),
         )
     )
 
     # Close files
-    bear.close()
+    control.close()

@@ -1,13 +1,14 @@
+# MAIN PYPARROT LIBRARY FOR DRONE CONTROL
 from pyparrot.DroneVision import DroneVision
 from pyparrot.Bebop import Bebop
 from pyparrot.Model import Model
 
-
+# IMPORTS FROM FILES
 import src.Aux.Funcs as Funcs
 import src.Aux.BearingOnly as BO
 import src.Aux.GUO as GUO
 
-
+# MAIN LIBRARIES
 import numpy as np
 import threading
 import pathlib
@@ -17,13 +18,14 @@ import sys
 import cv2
 import os
 
+# COLORAMA LIBRARY FOR COLORFUL PRINTS
+from colorama import init as colorama_init, Fore, Style
 
-from colorama import init as colorama_init
-from colorama import Fore, Style
-
-
+# OPENCV CONECTION WITH FFMPEG
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "protocol_whitelist;file,rtp,udp"
+# NUMPY CONFIGURATION
 np.set_printoptions(suppress=True, linewidth=sys.maxsize, threshold=sys.maxsize)
+# ACTUAL PATH CONFIGURATION
 actualPATH = pathlib.Path(__file__).parent.absolute()
 
 
@@ -41,16 +43,10 @@ class successConnection:
 
         # Create the user vision function with the self.bebopVision object
         self.user = UserVision(self.bebopVision, self.bebop, self.control, 1)
-        print("[INFO] Class UserVision created")
 
-        # Start the vision thread
-        # self.bebopVision.set_user_callback_function(self.user.ImageFunction, user_callback_args=None)
-        # self.bebopVision._start_video_buffering()
-        # print("Vision thread started")
-
-        # while self.user.status:
-        #     self.user.ImageFunction(0)
         self.user.ImageFunction(0)
+
+        print("[INFO] Closing from 'successConnection' class")
         self.user.safe_close()
 
 
@@ -76,8 +72,6 @@ class UserVision:
         self.thereIsAruco = False
         self.clicked = False
 
-        self.clean()
-
         self.drone.set_video_stream_mode("high_reliability")
         self.drone.set_video_framerate("30_FPS")
         self.drone.enable_geofence(0)
@@ -91,6 +85,7 @@ class UserVision:
         self.getImagesThread = threading.Thread(target=self.getImages)
         self.saveImagesThread = threading.Thread(target=self.saveImages)
 
+        self.clean()
         self.getImagesState = True
         self.getImagesThread.start()
         if self.yaml["SAVE_IMAGES"]:
@@ -147,7 +142,10 @@ class UserVision:
                         break
 
                 actualTime = time.time() - self.initTime
-                if (actualTime > (self.yaml["MAX_TIME"]) or self.index >= self.yaml["MAX_ITER"]):
+                if (
+                    actualTime > (self.yaml["MAX_TIME"])
+                    or self.index >= self.yaml["MAX_ITER"]
+                ):
                     print(f"\n\n\n{Fore.YELLOW}", "%" * (cols - 4), Style.RESET_ALL)
                     print("[CLOSING] Closing program", end="")
                     print(f"\n{Fore.YELLOW}", "%" * (cols - 4), Style.RESET_ALL)
@@ -176,12 +174,6 @@ class UserVision:
                 #     self.vels[0], self.vels[1], self.vels[2], self.vels[5]
                 # )
 
-                # print(self.control(self.img, ))
-                # self.takeImage = True
-                # if self.img is not None:
-                #     cv2.imshow('Actual image', self.img)
-                #     cv2.waitKey(1)
-                # self.drone.smart_sleep(2)
                 time.sleep(0.1)
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")

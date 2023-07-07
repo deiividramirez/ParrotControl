@@ -58,8 +58,8 @@ class GUO:
         self.storeImage = None
         self.initTime = 0
         self.actualTime = 0
+        self.error = np.zeros((1, 6))
 
-        # open the file to save the data of the control law
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
         self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w+")
@@ -73,7 +73,7 @@ class GUO:
         self.file_vel_yaw.write("0.0\n")
         self.file_error.write("0.0\n")
         self.file_time.write("0.0\n")
-    
+
     def __name__(self) -> str:
         return "GUO: 1/dist" if self.yaml["control"] == 1 else "GUO: dist"
 
@@ -231,21 +231,18 @@ class GUO:
         @Returns:
           vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
         """
-
-        if imgAruco is None:
-            print("ArUco not found")
-            return np.zeros((6,))
-
         # if np.all(self.storeImage == actualImage):
         #     print("Same image")
         #     return self.input
         # else:
-        # self.storeImage = actualImage
+        #     self.storeImage = actualImage
         self.storeImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) == -1:
-            print("ArUco not found")
-            return np.zeros((6,))
+            print("[ERROR] Some ArUco's were not found")
+            self.input = np.zeros((6,))
+            self.save()
+            return self.input
 
         self.distances, self.error = self.getDistances(
             self.actualData.inSphere, self.desiredData.inSphere
@@ -266,6 +263,7 @@ class GUO:
         return self.input
 
     def save(self):
+        # print("[INFO] Saving data")
         self.actualTime = time.time() - self.initTime
         try:
             self.file_vel_x.write(f"{self.input[0]}\n")
@@ -273,11 +271,19 @@ class GUO:
             self.file_vel_z.write(f"{self.input[2]}\n")
             self.file_vel_yaw.write(f"{self.input[5]}\n")
             self.file_time.write(f"{self.actualTime}\n")
-
             self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
-            print("Error: ", error)
+
+            # print(f"x: {self.input[0]}",
+            #         f"y: {self.input[1]}",
+            #         f"z: {self.input[2]}",
+            #         f"yaw: {self.input[5]}",
+            #         f"error: {error:.5f}",
+            #         f"time: {self.actualTime:.2f}",
+            #         sep="\t")
+
+            print("[INFO] Error: ", error)
         except Exception as e:
-            print("Error writing in the file: ", e)
+            print("[ERROR] Error writing in file: ", e)
 
     def close(self):
         self.file_vel_x.close()
@@ -290,23 +296,21 @@ class GUO:
 
 if __name__ == "__main__":
     img = cv2.imread(f"{PATH}/data/desired_1.jpg")
-    guo = GUO(img, 1)
+    control = GUO(img, 1)
 
-    # GUO good example
     print(
-        guo.getVels(
+        control.getVels(
             cv2.imread(f"{PATH}/data/desired_1.jpg"),
             get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
         )
     )
 
-    # GUO bad example
     print(
-        guo.getVels(
+        control.getVels(
             cv2.imread(f"{PATH}/data/desired_2.jpg"),
             get_aruco(cv2.imread(f"{PATH}/data/desired_2.jpg"), 4),
         )
     )
 
     # Close files
-    guo.close()
+    control.close()

@@ -61,7 +61,7 @@ class DroneVision:
         if (shortPathIndex == -1):
             # handle Windows paths
             shortPathIndex = fullPath.rfind("\\")
-        print(shortPathIndex)
+        
         shortPath = fullPath[0:shortPathIndex]
         self.imagePath = join(shortPath, "images")
         self.utilPath = join(shortPath, "utils")
@@ -70,8 +70,8 @@ class DroneVision:
         if not os.path.exists(self.imagePath):
             os.makedirs(self.imagePath)
 
-        print(self.imagePath)
-        print(self.utilPath)
+        print("Image path from DroneVision PyParrot: ", self.imagePath)
+        print("Util path from DroneVision PyParrot: ", self.utilPath)
 
 
     def set_user_callback_function(self, user_callback_function=None, user_callback_args=None):
