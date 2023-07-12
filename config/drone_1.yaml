@@ -12,4 +12,4 @@ gain_w_max: 1
 
 # 1: 1/dist,           2: dist              -> Leader
 # 1: P_gij * gij*      2: gij - gij*        -> Follower
-control: 2
+control: 1

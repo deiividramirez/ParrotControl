@@ -256,6 +256,7 @@ class GUO:
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
+            dtype=np.float32
         ).reshape((6,))
 
         self.save()

@@ -57,8 +57,10 @@ class successConnection:
 
         print(">> Disconnecting drone...")
         # self.drone.smart_sleep(2)
-        self.user.drone.disconnect()
-        self.user.drone.drone_connection.disconnect()
+        for _ in range(5):
+            self.user.drone.disconnect()
+            self.user.drone.drone_connection.disconnect()
+        
 
 
 class UserVision:
@@ -172,19 +174,15 @@ class UserVision:
                     )
                     self.update()
 
-                if self.thereIsAruco:
-                    self.vels = self.control.getVels(self.img, self.imgAruco)
-                else:
-                    print("[INFO] No aruco detected")
-                    self.control.input = self.vels = np.zeros((6,))
-                    self.control.save()
+                self.vels = self.control.getVels(self.img, self.imgAruco)
 
                 print(f"\n\t[VELS] {self.vels}")
                 print(f"\t[INFO] Time in control: {self.control.actualTime:.2f}")
 
-                # self.drone.move_relative(
-                #     self.vels[0], self.vels[1], self.vels[2], self.vels[5]
-                # )
+                if self.yaml["takeoff"] and not self.clicked:
+                    self.drone.move_relative(
+                        self.vels[0], self.vels[1], self.vels[2], self.vels[5]
+                    )
 
                 time.sleep(0.1)
         except Exception as e:
@@ -298,14 +296,22 @@ class UserVision:
     def land(self):
         if self.drone.safe_land(5) < 0:
             print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
-            self.drone.emergency_land()
+            initTime = time.time()
+            print(f"\t{Fore.YELLOW}[INFO] Trying 10 secs to land drone...{Style.RESET_ALL}")
+            while (self.drone.sensors.flying_state == "emergency"):
+                self.drone.safe_land(5)
+                if time.time() - initTime > 10:
+                    print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
+                    break
         else:
             print(f"\t{Fore.GREEN}[INFO] Drone landed{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
     # Rotation matrix from camera's frame to drone's frame
-    R = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
+    R = np.array([[0, 0, 1], 
+                  [1, 0, 0], 
+                  [0, 1, 0]])
 
     YALM = Funcs.loadGeneralYaml(actualPATH)
 

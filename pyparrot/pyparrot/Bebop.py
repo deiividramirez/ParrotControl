@@ -444,12 +444,14 @@ class Bebop():
         self.sensors.RelativeMoveEnded = False
 
         # send the command
+        print("Sending move_relative command")
         self.drone_connection.send_param_command_packet(command_tuple, param_tuple, param_type_tuple)
 
         # sleep until it ends
         while (not self.sensors.RelativeMoveEnded):
+            print("Waiting for move to end")
             self.smart_sleep(0.01)
-
+        print("Move ended")
 
     def start_video_stream(self):
         """

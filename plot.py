@@ -8,8 +8,9 @@ import pathlib
 
 PATH = pathlib.Path(__file__).parent.absolute()
 
-DRONE_COUNT = 1
+colors = ["blue", "orange", "green", "red", "purple"]
 
+DRONE_COUNT = 1
 lider = 0
 if len(sys.argv) == 2:
     dron = sys.argv[1]
@@ -46,25 +47,33 @@ else:
         # intz = np.loadtxt(f"{PATH}/out/drone_{dron}.txt")
 
         NUM = 0
-        
+
         print(
             f"""
 Drone {dron}
 Tiempo total -> {time[-1]}
-Error final -> {err[-1]} -- Max error -> {max(err[NUM:])}
+Error final -> {err[-1]} -- Max error -> {np.max(err[NUM:], axis=0)}
 Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
         """
         )
-
-        ax[0][dron - 1].title.set_text(f"Drone {dron}")
-        ax[0][dron - 1].plot(
-            [time[NUM], time[-1]],
-            [err[-1], err[-1]],
-            "--",
-            c="purple",
-            label=f"y={err[-1]:.3f}",
-            alpha=0.5,
-        )
+        for i in range(3):
+            ax[0][dron - 1].title.set_text(f"Drone {dron}")
+            ax[0][dron - 1].step(
+                time[NUM:],
+                err[NUM:, i],
+                ".-",
+                color=colors[i],
+                label=f"Error (c) {'x' if i == 0 else ('y' if i == 1 else 'z')}",
+                where="post",
+            )
+            ax[0][dron - 1].plot(
+                [time[NUM], time[-1]],
+                [err[-1, i], err[-1, i]],
+                "--",
+                color=colors[i],
+                label=f"y={err[-1, i]:.3f}",
+                alpha=0.5,
+            )
         ax[0][dron - 1].plot(
             [0, time[-1]],
             [0, 0],
@@ -73,7 +82,6 @@ Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
             label=f"y=0",
             alpha=0.25,
         )
-        ax[0][dron - 1].step(time[NUM:], err[NUM:], ".-", color="purple", label="Error (c)", where="post")
         # if np.any(err_pix != 0):
         #     err_pix = (err_pix) / max(err_pix[NUM + 10 :]) * max(err[NUM:])
         #     ax[0][dron - 1].plot(time[NUM:], err_pix[NUM:], "r", label="|Error (px)|")

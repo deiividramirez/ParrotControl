@@ -58,7 +58,7 @@ class BearingOnly:
         self.storeImage = None
         self.initTime = 0
         self.actualTime = 0
-        self.error = np.zeros((1, 6))
+        self.error = np.zeros((1, 3))
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
@@ -71,8 +71,9 @@ class BearingOnly:
         self.file_vel_y.write("0.0\n")
         self.file_vel_z.write("0.0\n")
         self.file_vel_yaw.write("0.0\n")
-        self.file_error.write("0.0\n")
         self.file_time.write("0.0\n")
+        self.error.tofile(self.file_error, sep=" ", format="%s")
+        self.file_error.write("\n")
 
     def __name__(self) -> str:
         return (
@@ -219,6 +220,7 @@ class BearingOnly:
         print("Actual bearings", self.actualData.bearings)
 
         self.error = self.actualData.bearings - self.desiredData.bearings
+        print("Error", np.mean(self.error.T, axis=0))
 
         U = np.zeros((3, 1))
         for i in range(self.actualData.bearings.shape[0]):
@@ -229,15 +231,17 @@ class BearingOnly:
             )
             U += temp.reshape(-1, 1)
 
-        self.vels = np.concatenate((U, np.zeros((3, 1))), axis=0)
+        self.vels = np.concatenate((U, np.zeros((3, 1))), axis=0, dtype=np.float32)
 
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
         ).reshape((6,))
 
+        self.input = 2 * self.input
+        self.input = np.clip(self.input, -0.15, 0.15)
+        
         self.save()
-
         return self.input
 
     def save(self):
@@ -249,7 +253,9 @@ class BearingOnly:
             self.file_vel_z.write(f"{self.input[2]}\n")
             self.file_vel_yaw.write(f"{self.input[5]}\n")
             self.file_time.write(f"{self.actualTime}\n")
-            self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+            # self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+            np.mean(self.error, axis=0).tofile(self.file_error, sep="\t", format="%s")
+            self.file_error.write("\n")
 
             # print(f"x: {self.input[0]}",
             #         f"y: {self.input[1]}",
@@ -259,7 +265,7 @@ class BearingOnly:
             #         f"time: {self.actualTime:.2f}",
             #         sep="\t")
 
-            print("[INFO] Error: ", error)
+            print("[INFO] Error: ", np.linalg.norm(self.error, ord=1))
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
 
