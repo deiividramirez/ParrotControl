@@ -102,18 +102,25 @@ class UserVision:
         if self.yaml["SAVE_IMAGES"]:
             self.saveImagesThread.start()
 
+        self.cols, _ = os.get_terminal_size(0)
+        self.sepLinePercent = f"{'%' * (self.cols - 4)}"
+        self.sepLineAsterisk = f"{'*' * (self.cols - 4)}"
+        self.sepLineEqual = f"{'=' * (self.cols - 4)}"
+
+        self.drawAruco = Funcs.drawArucoClass()
+
         print(f"\t{Fore.GREEN}[INFO] Class UserVision created{Style.RESET_ALL}")
 
     def ImageFunction(self, args):
-        cols, rows = os.get_terminal_size(0)
-
+        temporalGAIN = 0.4
         try:
             print(
-                f"\n{Fore.YELLOW}{'*' * (cols - 4)}{Style.RESET_ALL}\n[INFO] Asking for state update"
+                f"\n{Fore.YELLOW}{self.sepLineAsterisk}{Style.RESET_ALL}\n[INFO] Asking for state update"
             )
             self.drone.ask_for_state_update()
 
             while not self.clicked:
+                initialTIME = time.time()
                 if self.drone.sensors.flying_state == "emergency":
                     print(
                         f"\n\n\n{Fore.RED}[EMERGENCY] ** Emergency landing **{Style.RESET_ALL}"
@@ -130,9 +137,11 @@ class UserVision:
                     for i in range(5):
                         print(f"[INFO] << {5-i} seconds left >>", end="\r")
                         time.sleep(1)
-                        if self.clicked: break
+                        if self.clicked:
+                            break
 
-                    if self.clicked: break
+                    if self.clicked:
+                        break
 
                     self.firstRun = False
                     self.drone.set_max_tilt(5)
@@ -145,7 +154,8 @@ class UserVision:
                     print("\n\nBattery: ", self.drone.sensors.battery)
                     print("Flying state: ", self.drone.sensors.flying_state, "\n\n")
 
-                    if self.clicked: break
+                    if self.clicked:
+                        break
 
                     self.initTime = self.control.initTime = time.time()
                 #################################################################################
@@ -155,14 +165,21 @@ class UserVision:
                     actualTime > (self.yaml["MAX_TIME"])
                     or self.index >= self.yaml["MAX_ITER"]
                 ):
-                    print(f"\n\n\n{Fore.YELLOW}", "%" * (cols - 4), Style.RESET_ALL)
-                    print("[CLOSING] Closing program", end="")
-                    print(f"\n{Fore.YELLOW}", "%" * (cols - 4), Style.RESET_ALL)
+                    print(
+                        f"\n\n\n{Fore.YELLOW}",
+                        self.sepLinePercent,
+                        "\n",
+                        "[CLOSING] Closing program",
+                        Style.RESET_ALL,
+                    )
                     self.safe_close()
                     break
                 else:
-                    print(f"\n{Fore.YELLOW}", "=" * (cols - 4), Style.RESET_ALL)
                     print(
+                        f"\n{Fore.YELLOW}",
+                        self.sepLineEqual,
+                        "\n",
+                        Style.RESET_ALL,
                         f'\t[INFO] Using control: {Fore.RED}"{self.control.__name__()}"{Style.RESET_ALL} for drone # {self.droneID}\n',
                         f'\t[INFO] General time: {Fore.RED}{actualTime:.2f}{Style.RESET_ALL} seconds out of {Fore.RED}{self.yaml["MAX_TIME"]:.2f}{Style.RESET_ALL} seconds\n',
                         f'\t[INFO] Iteration {Fore.RED}{self.index:>6}{Style.RESET_ALL} out of {Fore.RED}{self.yaml["MAX_ITER"]}{Style.RESET_ALL} iterations\n',
@@ -171,15 +188,28 @@ class UserVision:
 
                 self.vels = self.control.getVels(self.img, self.imgAruco)
 
-                print(f"\n\t[VELS] {self.vels}")
-                print(f"\t[INFO] Time in control: {self.control.actualTime:.2f}")
+                print(
+                    f"\n\t[VELS] {self.vels}\n",
+                    f"\t[INFO] Time in control: {self.control.actualTime:.2f}",
+                )
 
                 #################################################################################
                 # SEND VELOCITIES TO DRONE
-                if self.yaml["takeoff"] and not self.clicked:
+                if self.yaml["takeoff"] and not self.clicked and np.any(self.vels):
                     self.drone.move_relative(
                         self.vels[0], self.vels[1], self.vels[2], self.vels[5]
                     )
+                    # self.drone.fly_direct(
+                    #     temporalGAIN * self.vels[0],
+                    #     temporalGAIN * self.vels[1],
+                    #     temporalGAIN * self.vels[5],
+                    #     temporalGAIN * self.vels[2],
+                    #     0.15,
+                    # )
+
+                print(
+                    f"{Fore.RED}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
+                )
 
                 time.sleep(0.1)
         except Exception as e:
@@ -209,9 +239,12 @@ class UserVision:
 
             if self.img is not None and not self.clicked:
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
+
                 if self.imgAruco[1] is not None:
+                    self.drawAruco.drawAruco(self.img, self.imgAruco)
+                    self.drawAruco.drawNew(self.control.desiredData.feature)
                     cv2.imshow(
-                        "Actual image", Funcs.drawArucoPoints(self.img, self.imgAruco)
+                        "Actual image", self.drawAruco.img
                     )
                     self.takeImage = True
                 else:
@@ -235,15 +268,17 @@ class UserVision:
         print(f"\t{Fore.GREEN}[THREAD] Starting thread to save images{Style.RESET_ALL}")
         lastImg = None
         while self.getImagesState and not self.clicked:
-            if self.img is not None:
+            # img = self.img
+            img = self.drawAruco.img
+            if img is not None:
                 if lastImg is None:
-                    lastImg = self.img
+                    lastImg = img
                 else:
-                    if not np.array_equal(lastImg, self.img) and self.takeImage:
-                        lastImg = self.img.copy()
+                    if not np.array_equal(lastImg, img) and self.takeImage:
+                        lastImg = img.copy()
                         cv2.imwrite(
                             f"{actualPATH}/img/{self.indexImgSave:06d}_{self.control.drone_id}.jpg",
-                            self.img,
+                            img,
                         )
                         self.indexImgSave += 1
                         self.takeImage = False

@@ -145,7 +145,8 @@ class BearingOnly:
         self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
 
         return 0
-
+    
+    @decorator_timer
     def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
         """
         This function returns the velocities of the drones in the drone's frame

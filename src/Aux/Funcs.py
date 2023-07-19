@@ -1,7 +1,20 @@
+from functools import wraps
 from cv2 import aruco
 import numpy as np
+import time
 import yaml
 import cv2
+
+
+def decorator_timer(function):
+    def wrapper(*args, **kwargs):
+        t1 = time.time()
+        result = function(*args, **kwargs)
+        end = time.time() - t1
+        print(f"\t[INFO] Function '{function.__name__}' took {end} seconds")
+        return result
+
+    return wrapper
 
 
 class desiredData:
@@ -40,6 +53,21 @@ class dictDist:
         )
 
 
+class drawArucoClass:
+    def __init__(self) -> None:
+        self.img = None
+
+    def drawAruco(self, img: np.ndarray, info: tuple) -> np.ndarray:
+        self.img = img.copy()
+        drawArucoPoints(self.img, info)
+        # return self.img
+
+    def drawNew(self, info: np.ndarray, color: tuple = (0, 255, 0)):
+        for i in range(info.shape[0]):
+            cv2.circle(self.img, tuple(info[i]), 3, color, -1)
+        # return self.img 
+
+
 def load_yaml(PATH, drone_id) -> dict:
     with open(f"{PATH}/config/drone_{drone_id}.yaml", "r") as f:
         temp = yaml.load(f, Loader=yaml.FullLoader)
@@ -65,27 +93,26 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     if n == 4:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
+
     parameters = aruco.DetectorParameters()
     corners, ids, rejectedImgPoints = aruco.detectMarkers(
         img, aruco_dict, parameters=parameters
     )
-    return np.int32(corners), ids, rejectedImgPoints
+    return np.int32(corners), ids, np.int32(rejectedImgPoints)
 
 
-def drawAruco(img: np.ndarray, info: tuple) -> np.ndarray:
-    temp_img = img.copy()
-    corners, ids, rejectedImgPoints = info
-    return aruco.drawDetectedMarkers(temp_img, corners, ids)
+# def drawArucoSimple(img: np.ndarray, info: tuple) -> np.ndarray:
+#     temp_img = img.copy()
+#     corners, ids, rejectedImgPoints = info
+#     return aruco.drawDetectedMarkers(temp_img, corners, ids)
 
 
-def drawArucoPoints(img: np.ndarray, info: tuple) -> np.ndarray:
-    temp_img = img.copy()
-    # temp_img = img
+def drawArucoPoints(img: np.ndarray, info: tuple, color: tuple = (0, 0, 255)) -> np.ndarray:
     corners, ids, rejectedImgPoints = info
     for i in range(len(ids)):
         for j in range(4):
-            cv2.circle(temp_img, tuple(corners[i][0][j]), 3, (0, 0, 255), -1)
-    return temp_img
+            cv2.circle(img, tuple(corners[i][0][j]), 3, color, -1)
+    return img
 
 
 def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:

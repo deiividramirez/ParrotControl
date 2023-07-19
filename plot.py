@@ -1,13 +1,30 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pathlib
 import sys
 import os
 
-
-import pathlib
-
 PATH = pathlib.Path(__file__).parent.absolute()
 
+linestyle_tuple = [
+    ("loosely dotted", (0, (1, 10))),
+    ("dotted", (0, (1, 1))),
+    ("densely dotted", (0, (1, 1))),
+    ("long dash with offset", (5, (10, 3))),
+    ("loosely dashed", (0, (5, 10))),
+    ("dashed", (0, (5, 5))),
+    ("densely dashed", (0, (5, 1))),
+    ("loosely dashdotted", (0, (3, 10, 1, 10))),
+    ("dashdotted", (0, (3, 5, 1, 5))),
+    ("dashdotdotted", (0, (3, 5, 1, 5, 1, 5))),
+    ("loosely dashdotdotted", (0, (3, 10, 1, 10, 1, 10))),
+    ("line", (0, ())),
+    ("densely dashdotted", (0, (3, 1, 1, 1))),
+    ("--", "--"),
+    ("densely dashdotdotted", (0, (3, 1, 1, 1, 1, 1))),
+]
+
+linestyle = linestyle_tuple[-1][1]
 colors = ["blue", "orange", "green", "red", "purple"]
 
 DRONE_COUNT = 1
@@ -46,7 +63,7 @@ else:
         # inty = np.loadtxt(f"{PATH}/out/drone_{dron}.txt")
         # intz = np.loadtxt(f"{PATH}/out/drone_{dron}.txt")
 
-        NUM = 0
+        NUM = 1
 
         print(
             f"""

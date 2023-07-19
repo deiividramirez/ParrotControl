@@ -14,29 +14,30 @@ from PyQt5.QtGui import QImage
 
 isAlive = False
 
+
 class UserVision:
     def __init__(self, vision):
         self.index = 0
         self.vision = vision
 
     def save_pictures(self, args):
-        #print("saving picture")
+        # print("saving picture")
         img = self.vision.get_latest_valid_picture()
 
         # limiting the pictures to the first 10 just to limit the demo from writing out a ton of files
-        if (img is not None and self.index <= 10):
+        if img is not None and self.index <= 10:
             filename = "test_image_%06d.png" % self.index
             cv2.imwrite(filename, img)
-            self.index +=1
+            self.index += 1
 
 
 def draw_current_photo():
     """
     Quick demo of returning an image to show in the user window.  Clearly one would want to make this a dynamic image
     """
-    image = cv2.imread('test_image_000001.png')
+    image = cv2.imread("test_image_000001.png")
 
-    if (image is not None):
+    if image is not None:
         if len(image.shape) < 3 or image.shape[2] == 1:
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         else:
@@ -51,12 +52,13 @@ def draw_current_photo():
     else:
         return None
 
+
 def demo_user_code_after_vision_opened(bebopVision, args):
     bebop = args[0]
 
     print("Vision successfully started!")
-    #removed the user call to this function (it now happens in open_video())
-    #bebopVision.start_video_buffering()
+    # removed the user call to this function (it now happens in open_video())
+    # bebopVision.start_video_buffering()
 
     # takeoff
     # bebop.safe_takeoff(5)
@@ -66,7 +68,7 @@ def demo_user_code_after_vision_opened(bebopVision, args):
     print("Fly me around by hand!")
     bebop.smart_sleep(15)
 
-    if (bebopVision.vision_running):
+    if bebopVision.vision_running:
         print("Moving the camera using velocity")
         bebop.pan_tilt_camera_velocity(pan_velocity=0, tilt_velocity=-2, duration=4)
         bebop.smart_sleep(5)
@@ -81,21 +83,44 @@ def demo_user_code_after_vision_opened(bebopVision, args):
     print("disconnecting")
     bebop.disconnect()
 
+
 if __name__ == "__main__":
     # make my bebop object
-    bebop = Bebop()
+    # bebop = Bebop()
 
-    # connect to the bebop
-    success = bebop.connect(5)
+    # # connect to the bebop
+    # success = bebop.connect(5)
 
-    if (success):
-        # start up the video
-        bebopVision = DroneVisionGUI(bebop, Model.BEBOP, user_code_to_run=demo_user_code_after_vision_opened,
-                                     user_args=(bebop, ), user_draw_window_fn=draw_current_photo)
+    # if (success):
+    #     # start up the video
+    #     bebopVision = DroneVisionGUI(bebop, Model.BEBOP, user_code_to_run=demo_user_code_after_vision_opened,
+    #                                  user_args=(bebop, ), user_draw_window_fn=draw_current_photo)
 
-        userVision = UserVision(bebopVision)
-        bebopVision.set_user_callback_function(userVision.save_pictures, user_callback_args=None)
-        bebopVision.open_video()
+    #     userVision = UserVision(bebopVision)
+    #     bebopVision.set_user_callback_function(userVision.save_pictures, user_callback_args=None)
+    #     bebopVision.open_video()
 
-    else:
-        print("Error connecting to bebop.  Retry")
+    # else:
+    #     print("Error connecting to bebop.  Retry")
+    from functools import wraps
+    import time
+
+    def decorator_timer(some_function):
+        def wrapper(*args, **kwargs):
+            t1 = time.time()
+            result = some_function(*args, **kwargs)
+            end = time.time() - t1
+            print(f"Function {some_function.__name__} took {end} seconds")
+            return result
+
+        return wrapper
+
+    @decorator_timer
+    def my_pow(a, b):
+        res = a**b
+        return res
+        # or just return a ** b, it doesn't really matter
+
+    result, exec_time = my_pow(99, 999)
+    print(exec_time)  # prints after 0.07347989082336426 seconds
+    print(result)  # takes ~3 seconds

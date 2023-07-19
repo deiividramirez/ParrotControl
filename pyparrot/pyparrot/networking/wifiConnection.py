@@ -457,7 +457,7 @@ class WifiConnection:
             color_print(f"sending packet on try {try_num}", "INFO")
             self.safe_send(packet)
             try_num += 1
-            self.smart_sleep(0.5)
+            self.smart_sleep(0.01)
 
         return self._is_command_received('SEND_WITH_ACK', seq_id)
 

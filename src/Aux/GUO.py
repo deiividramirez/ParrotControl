@@ -90,7 +90,7 @@ class GUO:
         """
         self.desiredData = desiredData()
         temp = get_aruco(self.img_desired_gray, 4)
-
+        
         for seg in self.yaml["seguimiento"]:
             if temp[1] is not None and seg in temp[1]:
                 index = np.argwhere(temp[1] == seg)[0][0]
@@ -103,11 +103,14 @@ class GUO:
         ).reshape(-1, 2)
 
         if len(self.yaml["seguimiento"]) == 4:
-            self.desiredData.feature = np.array([self.desiredData.feature[i].copy() for i in [0, 5, 11, 14]])
+            self.desiredData.feature = np.array(
+                [self.desiredData.feature[i].copy() for i in [0, 5, 11, 14]]
+            )
 
         self.desiredData.inSphere = sendToSphere(
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
+
         return 0
 
     def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
@@ -136,7 +139,9 @@ class GUO:
         ).reshape(-1, 2)
 
         if len(self.yaml["seguimiento"]) == 4:
-            self.actualData.feature = np.array([self.actualData.feature[i] for i in [0, 5, 11, 14]])
+            self.actualData.feature = np.array(
+                [self.actualData.feature[i] for i in [0, 5, 11, 14]]
+            )
 
         self.actualData.inSphere = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
@@ -144,6 +149,7 @@ class GUO:
 
         return 0
 
+    @decorator_timer
     def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
         """
         This function returns the velocities of the drones in the drone's frame
@@ -186,7 +192,7 @@ class GUO:
             dtype=np.float32,
         ).reshape((6,))
 
-        self.input = .8 * self.input
+        self.input = 0.8 * self.input
         self.input = np.clip(self.input, -0.15, 0.15)
 
         self.save()
@@ -272,14 +278,10 @@ class GUO:
                 else 1 / distances[i].dist2
             )
 
-            temp = s * (
-                (pointsSphere[distances[i].i].reshape(1, 3))
-                @ ortoProj(pointsSphere[distances[i].j].reshape(3, 1))
-                + (pointsSphere[distances[i].j].reshape(1, 3))
-                @ ortoProj(pointsSphere[distances[i].i].reshape(3, 1))
-            )
+            p_i = pointsSphere[distances[i].i].reshape(3, 1)
+            p_j = pointsSphere[distances[i].j].reshape(3, 1)
 
-            L[i, :] = temp
+            L[i, :] = s * (p_i.T @ ortoProj(p_j) + p_j.T @ ortoProj(p_i))
         return L
 
     def close(self):
