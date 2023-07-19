@@ -90,7 +90,7 @@ class GUO:
         """
         self.desiredData = desiredData()
         temp = get_aruco(self.img_desired_gray, 4)
-        
+
         for seg in self.yaml["seguimiento"]:
             if temp[1] is not None and seg in temp[1]:
                 index = np.argwhere(temp[1] == seg)[0][0]
@@ -184,16 +184,19 @@ class GUO:
         self.L = self.laplacianGUO(self.actualData.inSphere, self.distances)
         self.Lp = np.linalg.pinv(self.L)
 
-        self.vels = np.concatenate((self.Lp @ self.error, np.zeros((3, 1))), axis=0)
-
+        self.vels = np.concatenate(
+            (self.Lp @ self.error, self.rotationControl()), axis=0
+        )
+        print(self.vels[3:])
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
             dtype=np.float32,
         ).reshape((6,))
 
-        self.input = 0.8 * self.input
-        self.input = np.clip(self.input, -0.15, 0.15)
+        self.input[:3] = self.yaml["gain_v"] * self.input[:3]
+        self.input[:3] = self.yaml["gain_w"] * self.input[:3]
+        self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
         self.save()
         return self.input
@@ -220,6 +223,34 @@ class GUO:
             print("[INFO] Error: ", error)
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
+
+    def rotationControl(self) -> np.ndarray:
+        L = np.zeros((2 * self.actualData.inSphere.shape[0], 3))
+        for i in range(2 * self.actualData.inSphere.shape[0]):
+            u = (
+                self.actualData.inSphere[i // 2, 0]
+                / self.actualData.inSphere[i // 2, 2]
+            )
+            v = (
+                self.actualData.inSphere[i // 2, 1]
+                / self.actualData.inSphere[i // 2, 2]
+            )
+            if i % 2 == 0:
+                L[i, :] = np.array([u * v, -(1 + u**2), v])
+            else:
+                L[i, :] = np.array([1 + v**2, -u * v, -u])
+        try:
+            Linv = np.linalg.pinv(L)
+            Error = np.zeros((self.actualData.inSphere.shape[0], 2))
+            for i in range(self.actualData.inSphere.shape[0]):
+                Error[i, :] = (
+                    self.actualData.inSphere[i, :2] / self.actualData.inSphere[i, 2]
+                    - self.desiredData.inSphere[i, :2] / self.desiredData.inSphere[i, 2]
+                )
+            return -Linv @ Error.reshape(-1, 1)
+        except Exception as e:
+            print("[ERROR] Error in rotationControl: ", e)
+            return np.zeros((3, 1))
 
     def getDistances(
         self, pointsActual: np.ndarray, pointsDesired: np.ndarray

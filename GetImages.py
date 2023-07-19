@@ -107,7 +107,7 @@ class UserVision:
         self.sepLineAsterisk = f"{'*' * (self.cols - 4)}"
         self.sepLineEqual = f"{'=' * (self.cols - 4)}"
 
-        self.drawAruco = Funcs.drawArucoClass()
+        self.drawArucoClass = Funcs.drawArucoClass()
 
         print(f"\t{Fore.GREEN}[INFO] Class UserVision created{Style.RESET_ALL}")
 
@@ -208,7 +208,7 @@ class UserVision:
                     # )
 
                 print(
-                    f"{Fore.RED}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
+                    f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
                 )
 
                 time.sleep(0.1)
@@ -239,14 +239,16 @@ class UserVision:
 
             if self.img is not None and not self.clicked:
                 self.imgAruco = Funcs.get_aruco(self.img, 4)
+                self.takeImage = True
 
                 if self.imgAruco[1] is not None:
-                    self.drawAruco.drawAruco(self.img, self.imgAruco)
-                    self.drawAruco.drawNew(self.control.desiredData.feature)
-                    cv2.imshow(
-                        "Actual image", self.drawAruco.img
-                    )
-                    self.takeImage = True
+                    self.drawArucoClass.drawAruco(self.img, self.imgAruco)
+                    self.drawArucoClass.drawNew(self.control.desiredData.feature)
+                    try:
+                        self.drawArucoClass.drawNew(self.control.actualData.feature, (255, 0, 0))
+                    except:
+                        pass
+                    cv2.imshow("Actual image", self.drawArucoClass.img)
                 else:
                     cv2.imshow("Actual image", self.img)
                 cv2.waitKey(1)
@@ -268,8 +270,8 @@ class UserVision:
         print(f"\t{Fore.GREEN}[THREAD] Starting thread to save images{Style.RESET_ALL}")
         lastImg = None
         while self.getImagesState and not self.clicked:
-            # img = self.img
-            img = self.drawAruco.img
+            img = self.img
+            # img = self.drawArucoClass.img
             if img is not None:
                 if lastImg is None:
                     lastImg = img

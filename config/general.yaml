@@ -1,11 +1,19 @@
 SAVE_DESIRED_IMAGES: 0
 SAVE_IMAGES: 1
 
-MAX_ITER: 2000 # (iterations int) 
-MAX_TIME: 5.0 # (seconds float)
+# (iterations int)
+MAX_ITER: 2000
 
-desiredImage: desired_1.jpg # (Image have to be inside /data/)
+# (seconds float)
+MAX_TIME: 30.0
 
-takeoff: 0 # 0: No takeoff, 1: Takeoff
+# (Image have to be inside /data/)
+desiredImage: desired_1.jpg
 
-Leader_Follower: 0 # 0: Leader, 1: Follower
+# 0: No takeoff
+# 1: Takeoff
+takeoff: 1
+
+# 0: Leader
+# 1: Follower
+Leader_Follower: 0

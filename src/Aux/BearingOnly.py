@@ -195,8 +195,9 @@ class BearingOnly:
             axis=0,
         ).reshape((6,))
 
-        self.input = 2 * self.input
-        self.input = np.clip(self.input, -0.1, 0.1)
+        self.input[:3] = self.yaml["gain_v"] * self.input[:3]
+        self.input[:3] = self.yaml["gain_w"] * self.input[:3]
+        self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
         self.save()
         return self.input

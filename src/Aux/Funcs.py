@@ -11,7 +11,7 @@ def decorator_timer(function):
         t1 = time.time()
         result = function(*args, **kwargs)
         end = time.time() - t1
-        print(f"\t[INFO] Function '{function.__name__}' took {end} seconds")
+        print(f"\n\t[INFO] Function '{function.__name__}' took {end} seconds")
         return result
 
     return wrapper
@@ -49,7 +49,8 @@ class dictDist:
             # f"i: {self.i} <-> j: {self.j}: d1 -> {self.dist:5f} - d2 -> {self.dist2:5f}"
             # f"i: {self.i} <-> j: {self.j}: d2-d1 -> {self.dist2-self.dist:5f}"
             # f"p_{self.i}, p_{self.j} -> {self.dist:5f} - d2 -> {self.dist2:5f} := {self.dist2-self.dist:5f}\n"
-            f"{self.dist:5f}* (=) {self.dist2:5f}"
+            # f"{self.dist:5f}* (=) {self.dist2:5f}"
+            f"{self.dist - self.dist2:5f}"
         )
 
 

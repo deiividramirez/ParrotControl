@@ -22,6 +22,7 @@ class BebopSensors:
         self.max_altitude_changed = False
         self.max_distance_changed = False
         self.no_fly_over_max_distance = False
+        self.no_fly_over_max_distance_changed = False
         self.max_tilt_changed = False
         self.max_pitch_roll_rotation_speed_changed = False
         self.max_vertical_speed_changed = False

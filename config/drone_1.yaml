@@ -5,11 +5,16 @@ camera_intrinsic_parameters: [745,   0,    640,
 # seguimiento: [97, 99]
 seguimiento: [96, 97, 98, 99]
 
-gain_v: 1
+# Translation gains
+gain_v: .8
 gain_v_max: 1
 
+# Rotation gains
 gain_w: 1
 gain_w_max: 1
+
+# Saturation values from (-max_vel, max_vel)
+max_vel: 0.15
 
 # -> Leader             |  -> Follower 
 #     1: 1/dist,        |       1: -P_gij * gij*
