@@ -96,8 +96,9 @@ class BearingOnly:
         self.desiredData = desiredData()
         temp = get_aruco(self.img_desired_gray, 4)
 
-        for index, seg in enumerate(self.yaml["seguimiento"]):
+        for seg in self.yaml["seguimiento"]:
             if temp[1] is not None and seg in temp[1]:
+                index = np.argwhere(temp[1] == seg)[0][0]
                 self.desiredData.feature.append(temp[0][index][0])
             else:
                 print("ArUco not found")
@@ -106,23 +107,11 @@ class BearingOnly:
             self.desiredData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        # # Temporal plot jejeje
-        # for i in range(self.desiredData.feature.shape[0]):
-        #   cv2.circle(self.img_desired, (self.desiredData.feature[i, 0], self.desiredData.feature[i, 1]), 5, (0, 255,0 ), -1)
-        # cv2.circle(self.img_desired, (int(self.desiredData.bearings[0, 0]), int(self.desiredData.bearings[0, 1])), 5, (0, 0, 255), -1)
-        # cv2.circle(self.img_desired, (int(self.desiredData.bearings[1, 0]), int(self.desiredData.bearings[1, 1])), 5, (0, 0, 255), -1)
-
-        # cv2.namedWindow("desired", cv2.WINDOW_FULLSCREEN)
-        # cv2.imshow("desired", self.img_desired)
-        # cv2.waitKey(0)
-        # exit()
-
         self.desiredData.inSphere = sendToSphere(
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
-        self.desiredData.bearings = self.middlePoint(
-            self.normalize(self.desiredData.inSphere)
-        )
+        self.desiredData.bearings = self.middlePoint(self.desiredData.inSphere)
+
         return 0
 
     def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
@@ -139,8 +128,9 @@ class BearingOnly:
         self.actualData = actualData()
         # imgAruco = get_aruco(actualImage)
 
-        for index, seg in enumerate(self.yaml["seguimiento"]):
+        for seg in self.yaml["seguimiento"]:
             if imgAruco[1] is not None and seg in imgAruco[1]:
+                index = np.argwhere(imgAruco[1] == seg)[0][0]
                 self.actualData.feature.append(imgAruco[0][index][0])
             else:
                 # print("ArUco not found")
@@ -149,46 +139,12 @@ class BearingOnly:
             self.actualData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        # # Temporal plot jejeje
-        # for i in range(self.actualData.feature.shape[0]):
-        #   cv2.circle(self.img_actual, (self.actualData.feature[i, 0], self.actualData.feature[i, 1]), 5, (0, 255,0 ), -1)
-        # cv2.circle(self.img_actual, (int(self.actualData.bearings[0, 0]), int(self.actualData.bearings[0, 1])), 5, (0, 0, 255), -1)
-        # cv2.circle(self.img_actual, (int(self.actualData.bearings[1, 0]), int(self.actualData.bearings[1, 1])), 5, (0, 0, 255), -1)
-
-        # cv2.namedWindow("actual", cv2.WINDOW_FULLSCREEN)
-        # cv2.imshow("actual", self.img_actual)
-        # cv2.waitKey(0)
-        # exit()
-
         self.actualData.inSphere = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
-        self.actualData.bearings = self.middlePoint(
-            self.normalize(self.actualData.inSphere)
-        )
+        self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
+
         return 0
-
-    def middlePoint(self, points: np.ndarray) -> np.ndarray:
-        """
-        This function returns the middle point of the points in the sphere
-
-        @Params:
-          points: np.ndarray -> A (n,3) matrix with the points in the sphere
-
-        @Returns:
-          np.ndarray -> A (1,3) matrix with the middle point in the sphere
-        """
-
-        temp = []
-        for i in range(0, points.shape[0], 4):
-            temp.append(np.mean(points[i : i + 4, :], axis=0))
-
-        return np.array(temp, dtype=np.float32).reshape(-1, 3)
-
-    def normalize(self, points: np.ndarray) -> np.ndarray:
-        return (
-            points / np.linalg.norm(points) if np.linalg.norm(points) != 0 else points
-        )
 
     def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
         """
@@ -239,8 +195,8 @@ class BearingOnly:
         ).reshape((6,))
 
         self.input = 2 * self.input
-        self.input = np.clip(self.input, -0.15, 0.15)
-        
+        self.input = np.clip(self.input, -0.1, 0.1)
+
         self.save()
         return self.input
 
@@ -253,8 +209,9 @@ class BearingOnly:
             self.file_vel_z.write(f"{self.input[2]}\n")
             self.file_vel_yaw.write(f"{self.input[5]}\n")
             self.file_time.write(f"{self.actualTime}\n")
-            # self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
-            np.mean(self.error, axis=0).tofile(self.file_error, sep="\t", format="%s")
+            np.linalg.norm(self.error, axis=0).tofile(
+                self.file_error, sep="\t", format="%s"
+            )
             self.file_error.write("\n")
 
             # print(f"x: {self.input[0]}",
@@ -268,6 +225,23 @@ class BearingOnly:
             print("[INFO] Error: ", np.linalg.norm(self.error, ord=1))
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
+
+    def middlePoint(self, points: np.ndarray) -> np.ndarray:
+        """
+        This function returns the middle point of the points in the sphere
+
+        @Params:
+          points: np.ndarray -> A (n,3) matrix with the points in the sphere
+
+        @Returns:
+          np.ndarray -> A (1,3) matrix with the middle point in the sphere
+        """
+
+        temp = []
+        for i in range(0, points.shape[0], 4):
+            temp.append(normalize(np.mean(points[i : i + 4, :], axis=0)))
+
+        return np.array(temp, dtype=np.float32).reshape(-1, 3)
 
     def close(self):
         self.file_vel_x.close()

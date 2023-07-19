@@ -56,24 +56,42 @@ Error final -> {err[-1]} -- Max error -> {np.max(err[NUM:], axis=0)}
 Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
         """
         )
-        for i in range(3):
-            ax[0][dron - 1].title.set_text(f"Drone {dron}")
+        ax[0][dron - 1].title.set_text(f"Drone {dron}")
+        if len(err.shape) == 1:
             ax[0][dron - 1].step(
                 time[NUM:],
-                err[NUM:, i],
+                err[NUM:],
                 ".-",
-                color=colors[i],
-                label=f"Error (c) {'x' if i == 0 else ('y' if i == 1 else 'z')}",
+                color="blue",
+                label=f"Error (c)",
                 where="post",
             )
             ax[0][dron - 1].plot(
                 [time[NUM], time[-1]],
-                [err[-1, i], err[-1, i]],
+                [err[-1], err[-1]],
                 "--",
-                color=colors[i],
-                label=f"y={err[-1, i]:.3f}",
+                color="blue",
+                label=f"y={err[-1]:.3f}",
                 alpha=0.5,
             )
+        else:
+            for i in range(3):
+                ax[0][dron - 1].step(
+                    time[NUM:],
+                    err[NUM:, i],
+                    ".-",
+                    color=colors[i],
+                    label=f"Error (c) {'x' if i == 0 else ('y' if i == 1 else 'z')}",
+                    where="post",
+                )
+                ax[0][dron - 1].plot(
+                    [time[NUM], time[-1]],
+                    [err[-1, i], err[-1, i]],
+                    "--",
+                    color=colors[i],
+                    label=f"y={err[-1, i]:.3f}",
+                    alpha=0.5,
+                )
         ax[0][dron - 1].plot(
             [0, time[-1]],
             [0, 0],
@@ -93,7 +111,7 @@ Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
         #         label=f"y={err_pix[-1]:.3f}",
         #         alpha=0.5,
         #     )
-        # ax[0][dron - 1].plot(
+        # ax[0][dron - 1].plot(#################################################################################
         #     [time[NUM], time[-1]], [0, 0], "k:", label="y=0", alpha=0.5
         # )
         box = ax[0][dron - 1].get_position()

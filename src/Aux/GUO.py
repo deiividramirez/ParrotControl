@@ -91,8 +91,9 @@ class GUO:
         self.desiredData = desiredData()
         temp = get_aruco(self.img_desired_gray, 4)
 
-        for index, seg in enumerate(self.yaml["seguimiento"]):
+        for seg in self.yaml["seguimiento"]:
             if temp[1] is not None and seg in temp[1]:
+                index = np.argwhere(temp[1] == seg)[0][0]
                 self.desiredData.feature.append(temp[0][index][0])
             else:
                 print("ArUco not found")
@@ -101,17 +102,12 @@ class GUO:
             self.desiredData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        # Temporal plot jejeje
-        # for i in range(self.desiredData.feature.shape[0]):
-        #   cv2.circle(self.img_desired, (self.desiredData.feature[i, 0], self.desiredData.feature[i, 1]), 5, (0, 255,0 ), -1)
-
-        # cv2.imshow("desired", self.img_desired)
-        # cv2.waitKey(0)
+        if len(self.yaml["seguimiento"]) == 4:
+            self.desiredData.feature = np.array([self.desiredData.feature[i].copy() for i in [0, 5, 11, 14]])
 
         self.desiredData.inSphere = sendToSphere(
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
-
         return 0
 
     def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
@@ -128,8 +124,9 @@ class GUO:
         self.actualData = actualData()
         # imgAruco = get_aruco(actualImage)
 
-        for index, seg in enumerate(self.yaml["seguimiento"]):
+        for seg in self.yaml["seguimiento"]:
             if imgAruco[1] is not None and seg in imgAruco[1]:
+                index = np.argwhere(imgAruco[1] == seg)[0][0]
                 self.actualData.feature.append(imgAruco[0][index][0])
             else:
                 # print("ArUco not found")
@@ -138,18 +135,85 @@ class GUO:
             self.actualData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        # Temporal plot jejeje
-        # for i in range(self.actualData.feature.shape[0]):
-        #   cv2.circle(self.img_actual, (self.actualData.feature[i, 0], self.actualData.feature[i, 1]), 5, (0, 255,0 ), -1)
-
-        # cv2.imshow("actual", self.img_actual)
-        # cv2.waitKey(0)
+        if len(self.yaml["seguimiento"]) == 4:
+            self.actualData.feature = np.array([self.actualData.feature[i] for i in [0, 5, 11, 14]])
 
         self.actualData.inSphere = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
 
         return 0
+
+    def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
+        """
+        This function returns the velocities of the drones in the drone's frame
+        It will use the desired image and the actual image to calculate the velocities
+        with the GUO proposed method in the paper "Image-based estimation, planning,
+        and control for high-speed flying through multiple openings".
+
+        @Params:
+          actualImage: np.ndarray -> A (m,n) matrix with the actual image of the drone's camera
+
+        @Returns:
+          vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
+        """
+        # if np.all(self.storeImage == actualImage):
+        #     print("Same image")
+        #     return self.input
+        # else:
+        #     self.storeImage = actualImage
+        self.storeImage = actualImage
+
+        if self.getActualData(actualImage, imgAruco) < 0:
+            print("[ERROR] Some ArUco's were not found")
+            self.input = np.zeros((6,))
+            self.save()
+            return self.input
+
+        self.distances, self.error = self.getDistances(
+            self.actualData.inSphere, self.desiredData.inSphere
+        )
+        print("Distances: ", len(self.distances), self.distances)
+
+        self.L = self.laplacianGUO(self.actualData.inSphere, self.distances)
+        self.Lp = np.linalg.pinv(self.L)
+
+        self.vels = np.concatenate((self.Lp @ self.error, np.zeros((3, 1))), axis=0)
+
+        self.input = np.concatenate(
+            (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
+            axis=0,
+            dtype=np.float32,
+        ).reshape((6,))
+
+        self.input = .8 * self.input
+        self.input = np.clip(self.input, -0.15, 0.15)
+
+        self.save()
+        return self.input
+
+    def save(self):
+        # print("[INFO] Saving data")
+        self.actualTime = time.time() - self.initTime
+        try:
+            self.file_vel_x.write(f"{self.input[0]}\n")
+            self.file_vel_y.write(f"{self.input[1]}\n")
+            self.file_vel_z.write(f"{self.input[2]}\n")
+            self.file_vel_yaw.write(f"{self.input[5]}\n")
+            self.file_time.write(f"{self.actualTime}\n")
+            self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+
+            # print(f"x: {self.input[0]}",
+            #         f"y: {self.input[1]}",
+            #         f"z: {self.input[2]}",
+            #         f"yaw: {self.input[5]}",
+            #         f"error: {error:.5f}",
+            #         f"time: {self.actualTime:.2f}",
+            #         sep="\t")
+
+            print("[INFO] Error: ", error)
+        except Exception as e:
+            print("[ERROR] Error writing in file: ", e)
 
     def getDistances(
         self, pointsActual: np.ndarray, pointsDesired: np.ndarray
@@ -182,8 +246,8 @@ class GUO:
                         else dictDist(i, j, dist, dist2)
                     )
 
-        distances = sorted(distances, key=lambda x: x.dist, reverse=True)
-        error = [distance.dist2 - distance.dist for distance in distances]
+        # distances = sorted(distances, key=lambda x: x.dist, reverse=True)
+        error = [distance.dist - distance.dist2 for distance in distances]
         return distances, np.array(error).reshape(len(error), 1)
 
     def laplacianGUO(self, pointsSphere: np.ndarray, distances: dictDist):
@@ -203,9 +267,9 @@ class GUO:
 
         for i in range(n):
             s = (
-                -distances[i].dist ** 3
+                -distances[i].dist2 ** 3
                 if self.yaml["control"] == 1
-                else 1 / distances[i].dist
+                else 1 / distances[i].dist2
             )
 
             temp = s * (
@@ -217,74 +281,6 @@ class GUO:
 
             L[i, :] = temp
         return L
-
-    def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
-        """
-        This function returns the velocities of the drones in the drone's frame
-        It will use the desired image and the actual image to calculate the velocities
-        with the GUO proposed method in the paper "Image-based estimation, planning,
-        and control for high-speed flying through multiple openings".
-
-        @Params:
-          actualImage: np.ndarray -> A (m,n) matrix with the actual image of the drone's camera
-
-        @Returns:
-          vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
-        """
-        # if np.all(self.storeImage == actualImage):
-        #     print("Same image")
-        #     return self.input
-        # else:
-        #     self.storeImage = actualImage
-        self.storeImage = actualImage
-
-        if self.getActualData(actualImage, imgAruco) == -1:
-            print("[ERROR] Some ArUco's were not found")
-            self.input = np.zeros((6,))
-            self.save()
-            return self.input
-
-        self.distances, self.error = self.getDistances(
-            self.actualData.inSphere, self.desiredData.inSphere
-        )
-
-        self.L = self.laplacianGUO(self.actualData.inSphere, self.distances)
-        self.Lp = np.linalg.pinv(self.L)
-
-        self.vels = np.concatenate((self.Lp @ self.error, np.zeros((3, 1))), axis=0)
-
-        self.input = np.concatenate(
-            (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
-            axis=0,
-            dtype=np.float32
-        ).reshape((6,))
-
-        self.save()
-
-        return self.input
-
-    def save(self):
-        # print("[INFO] Saving data")
-        self.actualTime = time.time() - self.initTime
-        try:
-            self.file_vel_x.write(f"{self.input[0]}\n")
-            self.file_vel_y.write(f"{self.input[1]}\n")
-            self.file_vel_z.write(f"{self.input[2]}\n")
-            self.file_vel_yaw.write(f"{self.input[5]}\n")
-            self.file_time.write(f"{self.actualTime}\n")
-            self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
-
-            # print(f"x: {self.input[0]}",
-            #         f"y: {self.input[1]}",
-            #         f"z: {self.input[2]}",
-            #         f"yaw: {self.input[5]}",
-            #         f"error: {error:.5f}",
-            #         f"time: {self.actualTime:.2f}",
-            #         sep="\t")
-
-            print("[INFO] Error: ", error)
-        except Exception as e:
-            print("[ERROR] Error writing in file: ", e)
 
     def close(self):
         self.file_vel_x.close()

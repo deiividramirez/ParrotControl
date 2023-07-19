@@ -2,7 +2,8 @@ camera_intrinsic_parameters: [745,   0,    640,
                               0,    745,   360,
                               0,     0,     1]
 
-seguimiento: [96, 99]
+# seguimiento: [96, 99]
+seguimiento: [96, 97, 98, 99]
 
 gain_v: 1
 gain_v_max: 1
@@ -10,6 +11,7 @@ gain_v_max: 1
 gain_w: 1
 gain_w_max: 1
 
-# 1: 1/dist,           2: dist              -> Leader
-# 1: P_gij * gij*      2: gij - gij*        -> Follower
-control: 1
+# -> Leader             |  -> Follower 
+#     1: 1/dist,        |       1: -P_gij * gij*
+#     2: dist           |       2: gij - gij*
+control: 2

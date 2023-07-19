@@ -60,7 +60,6 @@ class successConnection:
         for _ in range(5):
             self.user.drone.disconnect()
             self.user.drone.drone_connection.disconnect()
-        
 
 
 class UserVision:
@@ -82,7 +81,6 @@ class UserVision:
         self.firstRun = True
 
         self.takeImage = False
-        self.thereIsAruco = False
         self.clicked = False
 
         self.drone.set_video_stream_mode("high_reliability")
@@ -131,12 +129,10 @@ class UserVision:
 
                     for i in range(5):
                         print(f"[INFO] << {5-i} seconds left >>", end="\r")
-                        if self.clicked:
-                            break
                         time.sleep(1)
+                        if self.clicked: break
 
-                    if self.clicked:
-                        break
+                    if self.clicked: break
 
                     self.firstRun = False
                     self.drone.set_max_tilt(5)
@@ -149,12 +145,11 @@ class UserVision:
                     print("\n\nBattery: ", self.drone.sensors.battery)
                     print("Flying state: ", self.drone.sensors.flying_state, "\n\n")
 
-                    if self.clicked:
-                        break
+                    if self.clicked: break
 
                     self.initTime = self.control.initTime = time.time()
-
                 #################################################################################
+
                 actualTime = time.time() - self.initTime
                 if (
                     actualTime > (self.yaml["MAX_TIME"])
@@ -179,6 +174,8 @@ class UserVision:
                 print(f"\n\t[VELS] {self.vels}")
                 print(f"\t[INFO] Time in control: {self.control.actualTime:.2f}")
 
+                #################################################################################
+                # SEND VELOCITIES TO DRONE
                 if self.yaml["takeoff"] and not self.clicked:
                     self.drone.move_relative(
                         self.vels[0], self.vels[1], self.vels[2], self.vels[5]
@@ -217,10 +214,8 @@ class UserVision:
                         "Actual image", Funcs.drawArucoPoints(self.img, self.imgAruco)
                     )
                     self.takeImage = True
-                    self.thereIsAruco = True
                 else:
                     cv2.imshow("Actual image", self.img)
-                    self.thereIsAruco = False
                 cv2.waitKey(1)
 
         try:
@@ -245,7 +240,7 @@ class UserVision:
                     lastImg = self.img
                 else:
                     if not np.array_equal(lastImg, self.img) and self.takeImage:
-                        lastImg = self.img
+                        lastImg = self.img.copy()
                         cv2.imwrite(
                             f"{actualPATH}/img/{self.indexImgSave:06d}_{self.control.drone_id}.jpg",
                             self.img,
@@ -297,8 +292,10 @@ class UserVision:
         if self.drone.safe_land(5) < 0:
             print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
             initTime = time.time()
-            print(f"\t{Fore.YELLOW}[INFO] Trying 10 secs to land drone...{Style.RESET_ALL}")
-            while (self.drone.sensors.flying_state == "emergency"):
+            print(
+                f"\t{Fore.YELLOW}[INFO] Trying 10 secs to land drone...{Style.RESET_ALL}"
+            )
+            while self.drone.sensors.flying_state == "emergency":
                 self.drone.safe_land(5)
                 if time.time() - initTime > 10:
                     print(f"{Fore.RED}[ERROR] Error landing drone{Style.RESET_ALL}")
@@ -309,18 +306,16 @@ class UserVision:
 
 if __name__ == "__main__":
     # Rotation matrix from camera's frame to drone's frame
-    R = np.array([[0, 0, 1], 
-                  [1, 0, 0], 
-                  [0, 1, 0]])
+    R = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
 
     YALM = Funcs.loadGeneralYaml(actualPATH)
 
     if YALM["Leader_Follower"]:
-        control = GUO.GUO(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
-    else:
         control = BO.BearingOnly(
             cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R
         )
+    else:
+        control = GUO.GUO(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
 
     # Make my bebop object
     bebop = Bebop(drone_type="Bebop2")

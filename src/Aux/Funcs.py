@@ -32,20 +32,28 @@ class dictDist:
         self.dist2 = dist2
 
     def __repr__(self) -> str:
-        return f"i: {self.i} <-> j: {self.j}: d1 -> {self.dist:5f} - d2 -> {self.dist2:5f}"
+        return (
+            # f"i: {self.i} <-> j: {self.j}: d1 -> {self.dist:5f} - d2 -> {self.dist2:5f}"
+            # f"i: {self.i} <-> j: {self.j}: d2-d1 -> {self.dist2-self.dist:5f}"
+            # f"p_{self.i}, p_{self.j} -> {self.dist:5f} - d2 -> {self.dist2:5f} := {self.dist2-self.dist:5f}\n"
+            f"{self.dist:5f}* (=) {self.dist2:5f}"
+        )
 
 
 def load_yaml(PATH, drone_id) -> dict:
     with open(f"{PATH}/config/drone_{drone_id}.yaml", "r") as f:
         temp = yaml.load(f, Loader=yaml.FullLoader)
         temp["camera_intrinsic_parameters"] = np.array(
-            temp["camera_intrinsic_parameters"]).reshape(3, 3)
+            temp["camera_intrinsic_parameters"]
+        ).reshape(3, 3)
         temp["seguimiento"] = np.array(temp["seguimiento"])
         # temp["bearings"] = np.array(temp["bearings"], dtype=np.float32).reshape(-1, 3)
 
         temp["inv_camera_intrinsic_parameters"] = np.linalg.inv(
-            temp["camera_intrinsic_parameters"])
+            temp["camera_intrinsic_parameters"]
+        )
         return temp
+
 
 def loadGeneralYaml(PATH) -> dict:
     with open(f"{PATH}/config/general.yaml", "r") as f:
@@ -58,14 +66,17 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
     if n == 4:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
     parameters = aruco.DetectorParameters()
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=parameters)
+    corners, ids, rejectedImgPoints = aruco.detectMarkers(
+        img, aruco_dict, parameters=parameters
+    )
     return np.int32(corners), ids, rejectedImgPoints
+
 
 def drawAruco(img: np.ndarray, info: tuple) -> np.ndarray:
     temp_img = img.copy()
     corners, ids, rejectedImgPoints = info
     return aruco.drawDetectedMarkers(temp_img, corners, ids)
-    
+
 
 def drawArucoPoints(img: np.ndarray, info: tuple) -> np.ndarray:
     temp_img = img.copy()
@@ -73,8 +84,9 @@ def drawArucoPoints(img: np.ndarray, info: tuple) -> np.ndarray:
     corners, ids, rejectedImgPoints = info
     for i in range(len(ids)):
         for j in range(4):
-            cv2.circle(temp_img, tuple(corners[i][0][j]), 2, (0, 0, 255), -1)
+            cv2.circle(temp_img, tuple(corners[i][0][j]), 3, (0, 0, 255), -1)
     return temp_img
+
 
 def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
     temp = []
@@ -87,6 +99,7 @@ def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
 def normalize(x: np.ndarray) -> np.ndarray:
     return x if (norm := np.linalg.norm(x)) == 0 else x / norm
 
+
 def ortoProj(x: np.ndarray) -> np.ndarray:
     temp = x.reshape(3, 1)
-    return np.eye(3) - (temp @ temp.T)/np.linalg.norm(temp)**2
+    return np.eye(3) - (temp @ temp.T) / np.linalg.norm(temp) ** 2
