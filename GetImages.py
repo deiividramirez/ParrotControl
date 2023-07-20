@@ -279,8 +279,11 @@ class UserVision:
         print(f"\t{Fore.GREEN}[THREAD] Starting thread to save images{Style.RESET_ALL}")
         lastImg = None
         while self.getImagesState and not self.clicked:
-            img = self.img
-            # img = self.drawArucoClass.img
+            try:
+                # img = self.img
+                img = self.drawArucoClass.img
+            except:
+                img = None
             if img is not None:
                 if lastImg is None:
                     lastImg = img
