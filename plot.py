@@ -36,13 +36,13 @@ elif len(sys.argv) == 3:
     dron = sys.argv[2]
 else:
     fig, ax = plt.subplots(
-        2,
+        3,
         DRONE_COUNT,
         figsize=(10, 5),
         sharex=True,
         num=f"Velocidades y errores para todos los drones",
     )
-    ax.shape = (2, DRONE_COUNT)
+    ax.shape = (3, DRONE_COUNT)
     # fig3d, ax3d = plt.subplots(
     #     1,
     #     1,
@@ -53,7 +53,7 @@ else:
 
     for dron in range(1, DRONE_COUNT + 1):
         err = np.loadtxt(f"{PATH}/out/drone_{dron}_error.txt")
-        # err_pix = np.loadtxt(f"{PATH}/out/drone_{dron}.txt")
+        err_pix = np.loadtxt(f"{PATH}/out/drone_{dron}_errorPix.txt")
         time = np.loadtxt(f"{PATH}/out/drone_{dron}_time.txt")
         vx = np.loadtxt(f"{PATH}/out/drone_{dron}_vel_x.txt")
         vy = np.loadtxt(f"{PATH}/out/drone_{dron}_vel_y.txt")
@@ -109,6 +109,20 @@ Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
                     label=f"y={err[-1, i]:.3f}",
                     alpha=0.5,
                 )
+
+        if np.any(err_pix != 0):
+            err_pix = err_pix
+            ax[0][dron - 1].plot(
+                time[NUM:], err_pix[NUM:], ".-", c="r", label="Error (px)"
+            )
+            ax[0][dron - 1].plot(
+                [time[NUM], time[-1]],
+                [err_pix[-1], err_pix[-1]],
+                "--",
+                c="k",
+                label=f"y={err_pix[-1]:.3f}",
+                alpha=0.25,
+            )
         ax[0][dron - 1].plot(
             [0, time[-1]],
             [0, 0],
@@ -117,25 +131,13 @@ Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
             label=f"y=0",
             alpha=0.25,
         )
-        # if np.any(err_pix != 0):
-        #     err_pix = (err_pix) / max(err_pix[NUM + 10 :]) * max(err[NUM:])
-        #     ax[0][dron - 1].plot(time[NUM:], err_pix[NUM:], "r", label="|Error (px)|")
-        #     ax[0][dron - 1].plot(
-        #         [time[NUM], time[-1]],
-        #         [err_pix[-1], err_pix[-1]],
-        #         "k--",
-        #         c="r",
-        #         label=f"y={err_pix[-1]:.3f}",
-        #         alpha=0.5,
-        #     )
-        # ax[0][dron - 1].plot(#################################################################################
-        #     [time[NUM], time[-1]], [0, 0], "k:", label="y=0", alpha=0.5
-        # )
+
         box = ax[0][dron - 1].get_position()
         ax[0][dron - 1].set_position([box.x0, box.y0, box.width * 0.99, box.height])
         ax[0][dron - 1].legend(loc="center left", bbox_to_anchor=(1, 0.5), shadow=True)
         ax[0][dron - 1].set_ylabel("Error Promedio")
 
+#########################################################################################
         ax[1][dron - 1].plot(
             [0, time[-1]],
             [0, 0],
@@ -151,25 +153,27 @@ Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
         ax[1][dron - 1].legend(loc="center left", bbox_to_anchor=(1, 0.5))
         ax[1][dron - 1].set_ylabel("Velocidades")
 
-        # for i in ["kp", "kv", "kd"]:
-        #     try:
-        #         lamb = np.loadtxt(f"{PATH}/out/out_lambda_{i}_{dron}.txt")
-        #         if np.any(lamb != 0):
-        #             ax[2][dron - 1].plot(
-        #                 time[NUM:], lamb[NUM:], label="$\lambda_{" + i + "}$"
-        #             )
-        #             ax[2][dron - 1].plot(
-        #                 [time[NUM], time[-1]],
-        #                 [lamb[-1], lamb[-1]],
-        #                 "k--",
-        #                 label=f"y={lamb[-1]:5f}",
-        #                 alpha=0.5,
-        #             )
-        #     except:
-        #         pass
-        # ax[2][dron - 1].legend(loc="center left", bbox_to_anchor=(1, 0.5))
-        # ax[2][dron - 1].set_ylabel("Lambda")
-        # ax[2][dron - 1].set_xlabel("Tiempo (s)")
+        for j in ["v", "w"]:
+            for i in ["kp", "kv", "kd"]:
+                try:
+                    lamb = np.loadtxt(f"{PATH}/out/drone_{dron}_{j}_{i}.txt")
+                    if np.any(lamb != 0):
+                        ax[2][dron - 1].plot(
+                            time[NUM:], lamb[NUM:], label=j+": $\lambda_{" + i + "}$"
+                        )
+                        ax[2][dron - 1].plot(
+                            [time[NUM], time[-1]],
+                            [lamb[-1], lamb[-1]],
+                            "--",
+                            c="k",
+                            label=f"y={lamb[-1]:3f}",
+                            alpha=0.25,
+                        )
+                except:
+                    pass
+        ax[2][dron - 1].legend(loc="center left", bbox_to_anchor=(1, 0.5))
+        ax[2][dron - 1].set_ylabel("Lambda")
+        ax[2][dron - 1].set_xlabel("Tiempo (s)")
 
         # ax[3][dron - 1].plot(time[NUM:], intx[NUM:], label="$I_x$")
         # ax[3][dron - 1].plot(time[NUM:], inty[NUM:], label="$I_y$")

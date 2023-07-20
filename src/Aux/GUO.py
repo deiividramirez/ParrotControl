@@ -60,19 +60,33 @@ class GUO:
         self.actualTime = 0
         self.error = np.zeros((1, 6))
 
+        self.gain_v = adaptativeGain(
+            self.yaml["gain_v_ini"], self.yaml["gain_v_max"], self.yaml["l_prime_v"]
+        )
+
+        self.gain_w = adaptativeGain(
+            self.yaml["gain_w_ini"], self.yaml["gain_w_max"], self.yaml["l_prime_w"]
+        )
+
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
         self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w+")
         self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w+")
         self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w+")
+        self.file_errorPix = open(PATH / "out" / f"drone_{drone_id}_errorPix.txt", "w+")
         self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w+")
+        self.file_v_kp = open(PATH / "out" / f"drone_{drone_id}_v_kp.txt", "w+")
+        self.file_w_kp = open(PATH / "out" / f"drone_{drone_id}_w_kp.txt", "w+")
 
+        self.file_v_kp.write("0.0\n")
+        self.file_w_kp.write("0.0\n")
+        self.file_time.write("0.0\n")
         self.file_vel_x.write("0.0\n")
         self.file_vel_y.write("0.0\n")
         self.file_vel_z.write("0.0\n")
-        self.file_vel_yaw.write("0.0\n")
         self.file_error.write("0.0\n")
-        self.file_time.write("0.0\n")
+        self.file_vel_yaw.write("0.0\n")
+        self.file_errorPix.write("0.0\n")
 
     def __name__(self) -> str:
         return "GUO: 1/dist" if self.yaml["control"] == 1 else "GUO: dist"
@@ -179,7 +193,9 @@ class GUO:
         self.distances, self.error = self.getDistances(
             self.actualData.inSphere, self.desiredData.inSphere
         )
-        print("Distances: ", len(self.distances), self.distances)
+        print(" Distances: ", len(self.distances), self.distances)
+
+        self.errorNorm = np.linalg.norm(self.error, ord=1)
 
         self.L = self.laplacianGUO(self.actualData.inSphere, self.distances)
         self.Lp = np.linalg.pinv(self.L)
@@ -194,8 +210,9 @@ class GUO:
             dtype=np.float32,
         ).reshape((6,))
 
-        self.input[:3] = self.yaml["gain_v"] * self.input[:3]
-        self.input[3:] = self.yaml["gain_w"] * self.input[3:]
+        self.input[:3] = self.gain_v(self.errorNorm) * self.input[:3]
+        self.input[3:] = self.gain_w(self.errorNorm) * self.input[3:]
+        self.input[2] *= 2
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
         if self.yaml["vels"] == 1:
@@ -217,7 +234,11 @@ class GUO:
             self.file_vel_z.write(f"{self.input[2]}\n")
             self.file_vel_yaw.write(f"{self.input[5]}\n")
             self.file_time.write(f"{self.actualTime}\n")
-            self.file_error.write(f"{(error:=np.linalg.norm(self.error, ord=1))}\n")
+            self.file_error.write(f"{self.errorNorm}\n")
+            self.file_errorPix.write(f"{self.errorPix}\n")
+
+            self.file_v_kp.write(f"{self.gain_v.gain}\n")
+            self.file_w_kp.write(f"{self.gain_w.gain}\n")
 
             # print(f"x: {self.input[0]}",
             #         f"y: {self.input[1]}",
@@ -227,7 +248,13 @@ class GUO:
             #         f"time: {self.actualTime:.2f}",
             #         sep="\t")
 
-            print("[INFO] Error: ", error)
+            print(
+                f" Error control: {self.errorNorm:3f}\n",
+                f"Error pixels {self.errorPix:3f}\n",
+                f"Lambda v: {self.gain_v.gain:3f}\n",
+                f"Lambda w: {self.gain_w.gain:3f}\n",
+            )
+
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
 
@@ -254,6 +281,8 @@ class GUO:
                     self.actualData.inSphere[i, :2] / self.actualData.inSphere[i, 2]
                     - self.desiredData.inSphere[i, :2] / self.desiredData.inSphere[i, 2]
                 )
+
+            self.errorPix = np.linalg.norm(Error, ord=1)
             return -Linv @ Error.reshape(-1, 1)
         except Exception as e:
             print("[ERROR] Error in rotationControl: ", e)
@@ -323,12 +352,15 @@ class GUO:
         return L
 
     def close(self):
+        self.file_errorPix.close()
+        self.file_vel_yaw.close()
+        self.file_error.close()
         self.file_vel_x.close()
         self.file_vel_y.close()
         self.file_vel_z.close()
-        self.file_vel_yaw.close()
         self.file_time.close()
-        self.file_error.close()
+        self.file_v_kp.close()
+        self.file_w_kp.close()
 
 
 if __name__ == "__main__":

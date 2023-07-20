@@ -6,12 +6,14 @@ camera_intrinsic_parameters: [745,   0,    640,
 seguimiento: [96, 97, 98, 99]
 
 # Translation gains
-gain_v: .8
+gain_v_ini: .8
 gain_v_max: 1
+l_prime_v: 1
 
 # Rotation gains
-gain_w: .8
+gain_w_ini: .8
 gain_w_max: 1
+l_prime_w: 0.5
 
 # Saturation values from (-max_vel, max_vel)
 max_vel: 0.3

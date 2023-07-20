@@ -66,7 +66,7 @@ class drawArucoClass:
     def drawNew(self, info: np.ndarray, color: tuple = (0, 255, 0)):
         for i in range(info.shape[0]):
             cv2.circle(self.img, tuple(info[i]), 3, color, -1)
-        # return self.img 
+        # return self.img
 
 
 def load_yaml(PATH, drone_id) -> dict:
@@ -108,7 +108,9 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
 #     return aruco.drawDetectedMarkers(temp_img, corners, ids)
 
 
-def drawArucoPoints(img: np.ndarray, info: tuple, color: tuple = (0, 0, 255)) -> np.ndarray:
+def drawArucoPoints(
+    img: np.ndarray, info: tuple, color: tuple = (0, 0, 255)
+) -> np.ndarray:
     corners, ids, rejectedImgPoints = info
     for i in range(len(ids)):
         for j in range(4):
@@ -131,3 +133,23 @@ def normalize(x: np.ndarray) -> np.ndarray:
 def ortoProj(x: np.ndarray) -> np.ndarray:
     temp = x.reshape(3, 1)
     return np.eye(3) - (temp @ temp.T) / np.linalg.norm(temp) ** 2
+
+
+class adaptativeGain:
+    def __init__(self, gain_max, gain_init, l_prime) -> None:
+        self.gain_max = gain_max
+        self.gain_init = gain_init
+        self.l_prime = l_prime
+
+        self.last_gain = gain_max
+
+    def __call__(self, error):
+        try:
+            self.gain = self.gain_max + (self.gain_init - self.gain_max) * np.exp(
+                -error * self.l_prime / (self.gain_init - self.gain_max)
+            )
+            self.last_gain = self.gain
+        except:
+            self.gain = self.last_gain
+
+        return self.gain

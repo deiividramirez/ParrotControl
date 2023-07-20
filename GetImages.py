@@ -201,16 +201,16 @@ class UserVision:
                             f"\t[INFO] Sending {Fore.GREEN}move_relative{Style.RESET_ALL} to drone"
                         )
                         self.drone.move_relative(
-                            self.vels[0], self.vels[1], self.vels[2], 0#self.vels[5]
+                            self.vels[0], self.vels[1], self.vels[2], 0  # self.vels[5]
                         )
                     elif self.control.yaml["vels"] == 1:
                         print(
                             f"\t[INFO] Sending {Fore.GREEN}fly_direct{Style.RESET_ALL} to drone"
                         )
                         self.drone.fly_direct(
-                            self.vels[1], # y
-                            self.vels[0], # x
-                            self.vels[5], # yaw
+                            self.vels[1],  # y
+                            self.vels[0],  # x
+                            self.vels[5],  # yaw
                             # -self.vels[2], # z
                             0,
                             0.05,
@@ -219,8 +219,6 @@ class UserVision:
                 print(
                     f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
                 )
-
-                # time.sleep(0.1)
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")
             self.safe_close()
@@ -358,12 +356,15 @@ if __name__ == "__main__":
 
     YALM = Funcs.loadGeneralYaml(actualPATH)
 
-    if YALM["Leader_Follower"]:
+    if YALM["Leader_Follower"] == 0:
+        control = GUO.GUO(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
+    elif YALM["Leader_Follower"] == 1:
         control = BO.BearingOnly(
             cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R
         )
     else:
-        control = GUO.GUO(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
+        print(f"{Fore.RED}[ERROR] Error loading control{Style.RESET_ALL}")
+        sys.exit()
 
     # Make my bebop object
     bebop = Bebop(drone_type="Bebop2")
@@ -373,7 +374,7 @@ if __name__ == "__main__":
     bebop.start_video_stream()
 
     # Set safe indoor parameters
-    bebop.set_max_tilt(5)              # Between 5 and 30 
+    bebop.set_max_tilt(5)  # Between 5 and 30
     bebop.set_max_vertical_speed(0.5)  # Between 0.5 and 2.5
 
     if connection:
