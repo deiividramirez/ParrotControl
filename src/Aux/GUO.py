@@ -187,7 +187,7 @@ class GUO:
         self.vels = np.concatenate(
             (self.Lp @ self.error, self.rotationControl()), axis=0
         )
-        print(self.vels[3:])
+
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
@@ -195,8 +195,15 @@ class GUO:
         ).reshape((6,))
 
         self.input[:3] = self.yaml["gain_v"] * self.input[:3]
-        self.input[:3] = self.yaml["gain_w"] * self.input[:3]
+        self.input[3:] = self.yaml["gain_w"] * self.input[3:]
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
+
+        if self.yaml["vels"] == 1:
+            print("Input before %: ", self.input)
+            self.input[:3] = self.input[:3] * 100 / self.yaml["max_vel"]
+            self.input = np.clip(self.input, -60, 60)
+            self.input[2] = np.clip(self.input[2], -40, 40)
+            print("Input  after %: ", self.input)
 
         self.save()
         return self.input

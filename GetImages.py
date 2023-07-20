@@ -58,6 +58,7 @@ class successConnection:
         print(">> Disconnecting drone...")
         # self.drone.smart_sleep(2)
         for _ in range(5):
+            print(f"[INFO] Trying to disconnect drone...")
             self.user.drone.disconnect()
             self.user.drone.drone_connection.disconnect()
 
@@ -112,7 +113,6 @@ class UserVision:
         print(f"\t{Fore.GREEN}[INFO] Class UserVision created{Style.RESET_ALL}")
 
     def ImageFunction(self, args):
-        temporalGAIN = 0.4
         try:
             print(
                 f"\n{Fore.YELLOW}{self.sepLineAsterisk}{Style.RESET_ALL}\n[INFO] Asking for state update"
@@ -147,7 +147,7 @@ class UserVision:
                     self.drone.set_max_tilt(5)
                     self.drone.set_max_vertical_speed(1)
 
-                    if self.yaml["takeoff"] and not self.clicked:
+                    if self.yaml["takeoff"] == 1 and not self.clicked:
                         print(f"\t{Fore.GREEN}[INFO] Safe takeoff{Style.RESET_ALL}")
                         self.drone.safe_takeoff(5)
 
@@ -195,23 +195,32 @@ class UserVision:
 
                 #################################################################################
                 # SEND VELOCITIES TO DRONE
-                if self.yaml["takeoff"] and not self.clicked and np.any(self.vels):
-                    self.drone.move_relative(
-                        self.vels[0], self.vels[1], self.vels[2], self.vels[5]
-                    )
-                    # self.drone.fly_direct(
-                    #     temporalGAIN * self.vels[0],
-                    #     temporalGAIN * self.vels[1],
-                    #     temporalGAIN * self.vels[5],
-                    #     temporalGAIN * self.vels[2],
-                    #     0.15,
-                    # )
+                if self.yaml["takeoff"] == 1 and not self.clicked and np.any(self.vels):
+                    if self.control.yaml["vels"] == 0:
+                        print(
+                            f"\t[INFO] Sending {Fore.GREEN}move_relative{Style.RESET_ALL} to drone"
+                        )
+                        self.drone.move_relative(
+                            self.vels[0], self.vels[1], self.vels[2], 0#self.vels[5]
+                        )
+                    elif self.control.yaml["vels"] == 1:
+                        print(
+                            f"\t[INFO] Sending {Fore.GREEN}fly_direct{Style.RESET_ALL} to drone"
+                        )
+                        self.drone.fly_direct(
+                            self.vels[1], # y
+                            self.vels[0], # x
+                            self.vels[5], # yaw
+                            # -self.vels[2], # z
+                            0,
+                            0.05,
+                        )
 
                 print(
                     f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
                 )
 
-                time.sleep(0.1)
+                # time.sleep(0.1)
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")
             self.safe_close()
@@ -245,7 +254,9 @@ class UserVision:
                     self.drawArucoClass.drawAruco(self.img, self.imgAruco)
                     self.drawArucoClass.drawNew(self.control.desiredData.feature)
                     try:
-                        self.drawArucoClass.drawNew(self.control.actualData.feature, (255, 0, 0))
+                        self.drawArucoClass.drawNew(
+                            self.control.actualData.feature, (255, 0, 0)
+                        )
                     except:
                         pass
                     cv2.imshow("Actual image", self.drawArucoClass.img)
@@ -361,9 +372,9 @@ if __name__ == "__main__":
     connection = bebop.connect(5)
     bebop.start_video_stream()
 
-    # set safe indoor parameters
-    bebop.set_max_tilt(5)
-    bebop.set_max_vertical_speed(1)
+    # Set safe indoor parameters
+    bebop.set_max_tilt(5)              # Between 5 and 30 
+    bebop.set_max_vertical_speed(0.5)  # Between 0.5 and 2.5
 
     if connection:
         # servo = successConnection(bebop, controlGUO)

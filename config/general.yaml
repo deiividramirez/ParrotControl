@@ -2,10 +2,10 @@ SAVE_DESIRED_IMAGES: 0
 SAVE_IMAGES: 1
 
 # (iterations int)
-MAX_ITER: 2000
+MAX_ITER: 5000
 
 # (seconds float)
-MAX_TIME: 30.0
+MAX_TIME: 10.0
 
 # (Image have to be inside /data/)
 desiredImage: desired_1.jpg

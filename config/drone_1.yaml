@@ -14,9 +14,14 @@ gain_w: .8
 gain_w_max: 1
 
 # Saturation values from (-max_vel, max_vel)
-max_vel: 0.15
+max_vel: 0.3
 
 # -> Leader             |  -> Follower 
 #     1: 1/dist,        |       1: -P_gij * gij*
 #     2: dist           |       2: gij - gij*
-control: 2
+control: 1
+
+# Send velocities 
+# 0: move_relative
+# 1: fly_direct
+vels: 0

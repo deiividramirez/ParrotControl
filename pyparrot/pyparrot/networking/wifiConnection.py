@@ -603,7 +603,7 @@ class WifiConnection:
 
         while (diff < duration):
             self.send_single_pcmd_command(command_tuple, roll, pitch, yaw, vertical_movement)
-            self.smart_sleep(0.1)
+            self.smart_sleep(0.008)
             new_time = datetime.now()
             diff = (new_time - start_time).seconds + ((new_time - start_time).microseconds / 1000000.0)
 
@@ -713,7 +713,7 @@ class WifiConnection:
         diff = (new_time - start_time).seconds + ((new_time - start_time).microseconds / 1000000.0)
 
         while (diff < timeout):
-            time.sleep(0.1)
+            time.sleep(0.001)
             new_time = datetime.now()
             diff = (new_time - start_time).seconds + ((new_time - start_time).microseconds / 1000000.0)
 

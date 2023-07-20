@@ -144,10 +144,10 @@ Velocidad final -> {vx[-1], vy[-1], vz[-1], vyaw[-1]}
             label=f"y=0",
             alpha=0.25,
         )
-        ax[1][dron - 1].step(time[NUM:], vx[NUM:], ".-", label="$V_x$")
-        ax[1][dron - 1].step(time[NUM:], vy[NUM:], ".-", label="$V_y$")
-        ax[1][dron - 1].step(time[NUM:], vz[NUM:], ".-", label="$V_z$")
-        ax[1][dron - 1].step(time[NUM:], vyaw[NUM:], ".-", label="$W_z$")
+        ax[1][dron - 1].step(time[NUM:], vx[NUM:], ".-", label="$V_x$ (m/s)")
+        ax[1][dron - 1].step(time[NUM:], vy[NUM:], ".-", label="$V_y$ (m/s)")
+        ax[1][dron - 1].step(time[NUM:], vz[NUM:], ".-", label="$V_z$ (m/s)")
+        ax[1][dron - 1].step(time[NUM:], vyaw[NUM:], ".-", label="$W_z$ (rad/s)")
         ax[1][dron - 1].legend(loc="center left", bbox_to_anchor=(1, 0.5))
         ax[1][dron - 1].set_ylabel("Velocidades")
 
