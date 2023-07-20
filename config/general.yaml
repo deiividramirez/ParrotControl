@@ -1,8 +1,8 @@
 SAVE_DESIRED_IMAGES: 0
 SAVE_IMAGES: 1
 
-# (iterations int)
-MAX_ITER: 5
+# (iterations int)  ~81 iterations per second
+MAX_ITER: 2400
 
 # (seconds float)
 MAX_TIME: 30.0
@@ -12,7 +12,7 @@ desiredImage: desired_1.jpg
 
 # 0: No takeoff
 # 1: Takeoff
-takeoff: 0
+takeoff: 1
 
 # 0: Leader
 # 1: Follower

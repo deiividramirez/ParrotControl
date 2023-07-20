@@ -212,7 +212,8 @@ class GUO:
 
         self.input[:3] = self.gain_v(self.errorNorm) * self.input[:3]
         self.input[3:] = self.gain_w(self.errorNorm) * self.input[3:]
-        self.input[2] *= 2
+        # self.input[2] *= 2
+
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
         if self.yaml["vels"] == 1:
