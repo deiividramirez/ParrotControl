@@ -186,39 +186,44 @@ class UserVision:
                     )
                     self.update()
 
-                self.vels = self.control.getVels(self.img, self.imgAruco)
+                    self.vels = self.control.getVels(self.img, self.imgAruco)
+                    print(
+                        f"\n\t[VELS] {self.vels}\n",
+                        f"\t[INFO] Time in control: {self.control.actualTime:.2f}",
+                    )
 
-                print(
-                    f"\n\t[VELS] {self.vels}\n",
-                    f"\t[INFO] Time in control: {self.control.actualTime:.2f}",
-                )
-
-                #################################################################################
-                # SEND VELOCITIES TO DRONE
-                if self.yaml["takeoff"] == 1 and not self.clicked and np.any(self.vels):
-                    if self.control.yaml["vels"] == 0:
-                        print(
-                            f"\t[INFO] Sending {Fore.GREEN}move_relative{Style.RESET_ALL} to drone"
-                        )
-                        self.drone.move_relative(
-                            self.vels[0], self.vels[1], self.vels[2], 0  # self.vels[5]
-                        )
-                    elif self.control.yaml["vels"] == 1:
-                        print(
-                            f"\t[INFO] Sending {Fore.GREEN}fly_direct{Style.RESET_ALL} to drone"
-                        )
-                        self.drone.fly_direct(
-                            self.vels[1],  # y
-                            self.vels[0],  # x
-                            self.vels[5],  # yaw
-                            # -self.vels[2], # z
-                            0,
-                            0.05,
-                        )
-
-                print(
-                    f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
-                )
+                    #################################################################################
+                    # SEND VELOCITIES TO DRONE
+                    if (
+                        self.yaml["takeoff"] == 1
+                        and not self.clicked
+                        and np.any(self.vels)
+                    ):
+                        if self.control.yaml["vels"] == 0:
+                            print(
+                                f"\t[INFO] Sending {Fore.GREEN}move_relative{Style.RESET_ALL} to drone"
+                            )
+                            self.drone.move_relative(
+                                self.vels[0],
+                                self.vels[1],
+                                self.vels[2],
+                                0,  # self.vels[5]
+                            )
+                        elif self.control.yaml["vels"] == 1:
+                            print(
+                                f"\t[INFO] Sending {Fore.GREEN}fly_direct{Style.RESET_ALL} to drone"
+                            )
+                            self.drone.fly_direct(
+                                self.vels[1],  # y
+                                self.vels[0],  # x
+                                self.vels[5],  # yaw
+                                # -self.vels[2], # z
+                                0,
+                                0.05,
+                            )
+                    print(
+                        f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
+                    )
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")
             self.safe_close()
@@ -280,8 +285,10 @@ class UserVision:
         lastImg = None
         while self.getImagesState and not self.clicked:
             try:
-                # img = self.img
-                img = self.drawArucoClass.img
+                if self.yaml["SAVE_WITH_ARUCO"] == 1:
+                    img = self.drawArucoClass.img
+                else:
+                    img = self.img
             except:
                 img = None
             if img is not None:

@@ -34,16 +34,13 @@ def normalize(v) -> np.ndarray:
     return v / np.linalg.norm(v) if np.linalg.norm(v) != 0 else v
 
 
-marker_1 = np.array([1434.6, 803.3, 614.3]) / 1000
-marker_2 = np.array([130.3, 689.2, 1470.7]) / 1000
-drone = np.array([-669.28, 824.19, -1114.8]) / 1000
+marker_1 = np.array([-752.3, 694.3, 1324.5]) / 1000
+marker_2 = np.array([800.1, 806.0, 1292.1]) / 1000
+drone = np.array([68.4, 823.1, -942.6]) / 1000
+drone = np.array([68.4, 823.1-500, -942.6]) / 1000
 
-bearing_1_drone = np.array(
-    [0.3239050805568695, -0.22209714353084564, 0.919651210308075]
-)
-bearing_2_drone = np.array(
-    [-0.31427812576293945, -0.2254883348941803, 0.9221628308296204]
-)
+bearing_1_drone = np.array([-0.3435904, -0.23595522, 0.9089944])
+bearing_2_drone = np.array([0.3826676, -0.18342136, 0.9054955])
 
 t = np.array([0.09, 0, 0])
 eRc = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
@@ -58,7 +55,7 @@ pitch_2 = 0
 yaw_2 = 0
 
 roll_3 = np.deg2rad(0)
-pitch_3 = np.deg2rad(90 - 35)
+pitch_3 = np.deg2rad(90)
 yaw_3 = np.deg2rad(0)
 
 R_1 = rotMat(roll_1, pitch_1, yaw_1)
@@ -149,7 +146,7 @@ ax.scatter(
     color="r",
     marker="o",
 )
-#draw line from drone to 3*bearing
+# draw line from drone to 3*bearing
 ax.plot(
     [drone_world[0], drone_world[0] + 3 * bearing_1_world[0]],
     [drone_world[1], drone_world[1] + 3 * bearing_1_world[1]],
@@ -233,7 +230,7 @@ ax1.plot(
     [drone_world[1], drone_world[1] + 3 * bearing_2_drone[1]],
     [drone_world[2], drone_world[2] + 3 * bearing_2_drone[2]],
     color="r",
-)   
+)
 
 # PLOT REAL WORLD AXIS
 ax.quiver(

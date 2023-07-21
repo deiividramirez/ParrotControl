@@ -56,16 +56,22 @@ class GUO:
             exit()
 
         self.storeImage = None
-        self.initTime = 0
-        self.actualTime = 0
+        self.initTime = time.time()
+        self.actualTime = time.time()
         self.error = np.zeros((1, 6))
+        self.errorNorm = 0
+        self.errorPix = 0
 
         self.gain_v = adaptativeGain(
-            self.yaml["gain_v_ini"], self.yaml["gain_v_max"], self.yaml["l_prime_v"]
+            self.yaml["gain_v_kp_ini"],
+            self.yaml["gain_v_kp_max"],
+            self.yaml["l_prime_v_kp"],
         )
 
         self.gain_w = adaptativeGain(
-            self.yaml["gain_w_ini"], self.yaml["gain_w_max"], self.yaml["l_prime_w"]
+            self.yaml["gain_w_kp_ini"],
+            self.yaml["gain_w_kp_max"],
+            self.yaml["l_prime_w_kp"],
         )
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
@@ -76,16 +82,20 @@ class GUO:
         self.file_errorPix = open(PATH / "out" / f"drone_{drone_id}_errorPix.txt", "w+")
         self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w+")
         self.file_v_kp = open(PATH / "out" / f"drone_{drone_id}_v_kp.txt", "w+")
+        self.file_v_ki = open(PATH / "out" / f"drone_{drone_id}_v_ki.txt", "w+")
         self.file_w_kp = open(PATH / "out" / f"drone_{drone_id}_w_kp.txt", "w+")
+        # self.file_w_ki = open(PATH / "out" / f"drone_{drone_id}_w_ki.txt", "w+")
+        self.file_int = open(PATH / "out" / f"drone_{drone_id}_int.txt", "w+")
 
         self.file_v_kp.write("0.0\n")
+        self.file_v_ki.write("0.0\n")
         self.file_w_kp.write("0.0\n")
         self.file_time.write("0.0\n")
         self.file_vel_x.write("0.0\n")
         self.file_vel_y.write("0.0\n")
         self.file_vel_z.write("0.0\n")
-        self.file_error.write("0.0\n")
         self.file_vel_yaw.write("0.0\n")
+        self.file_error.write("0.0\n")
         self.file_errorPix.write("0.0\n")
 
     def __name__(self) -> str:
@@ -121,7 +131,7 @@ class GUO:
                 [self.desiredData.feature[i].copy() for i in [0, 5, 11, 14]]
             )
 
-        self.desiredData.inSphere = sendToSphere(
+        self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
 
@@ -157,7 +167,7 @@ class GUO:
                 [self.actualData.feature[i] for i in [0, 5, 11, 14]]
             )
 
-        self.actualData.inSphere = sendToSphere(
+        self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
 
@@ -177,12 +187,16 @@ class GUO:
         @Returns:
           vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
         """
-        # if np.all(self.storeImage == actualImage):
+        # if (
+        #     self.storeImage is not None
+        #     and actualImage is not None
+        #     and np.array_equal(self.storeImage, actualImage)
+        # ):
         #     print("Same image")
         #     return self.input
         # else:
         #     self.storeImage = actualImage
-        self.storeImage = actualImage
+        # self.storeImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) < 0:
             print("[ERROR] Some ArUco's were not found")
@@ -250,41 +264,27 @@ class GUO:
             #         sep="\t")
 
             print(
-                f" Error control: {self.errorNorm:3f}\n",
-                f"Error pixels {self.errorPix:3f}\n",
-                f"Lambda v: {self.gain_v.gain:3f}\n",
-                f"Lambda w: {self.gain_w.gain:3f}\n",
+                f" Error control: {self.errorNorm:3f}\nError pixels {self.errorPix:3f}\nLambda v: {self.gain_v.gain:3f}\nLambda w: {self.gain_w.gain:3f}\n",
             )
 
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
 
     def rotationControl(self) -> np.ndarray:
-        L = np.zeros((2 * self.actualData.inSphere.shape[0], 3))
-        for i in range(2 * self.actualData.inSphere.shape[0]):
-            u = (
-                self.actualData.inSphere[i // 2, 0]
-                / self.actualData.inSphere[i // 2, 2]
-            )
-            v = (
-                self.actualData.inSphere[i // 2, 1]
-                / self.actualData.inSphere[i // 2, 2]
-            )
+        L = np.zeros((2 * self.actualData.inNormalPlane.shape[0], 3))
+        for i in range(2 * self.actualData.inNormalPlane.shape[0]):
+            u, v = self.actualData.inNormalPlane[i // 2]
             if i % 2 == 0:
                 L[i, :] = np.array([u * v, -(1 + u**2), v])
             else:
                 L[i, :] = np.array([1 + v**2, -u * v, -u])
         try:
             Linv = np.linalg.pinv(L)
-            Error = np.zeros((self.actualData.inSphere.shape[0], 2))
-            for i in range(self.actualData.inSphere.shape[0]):
-                Error[i, :] = (
-                    self.actualData.inSphere[i, :2] / self.actualData.inSphere[i, 2]
-                    - self.desiredData.inSphere[i, :2] / self.desiredData.inSphere[i, 2]
-                )
-
-            self.errorPix = np.linalg.norm(Error, ord=1)
-            return -Linv @ Error.reshape(-1, 1)
+            Error = (
+                self.actualData.inNormalPlane - self.desiredData.inNormalPlane
+            ).reshape(-1, 1)
+            self.errorPix = np.linalg.norm(Error)
+            return -Linv @ Error
         except Exception as e:
             print("[ERROR] Error in rotationControl: ", e)
             return np.zeros((3, 1))

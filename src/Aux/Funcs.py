@@ -6,21 +6,11 @@ import yaml
 import cv2
 
 
-def decorator_timer(function):
-    def wrapper(*args, **kwargs):
-        t1 = time.time()
-        result = function(*args, **kwargs)
-        end = time.time() - t1
-        print(f"\n\t[INFO] Function '{function.__name__}' took {end} seconds")
-        return result
-
-    return wrapper
-
-
 class desiredData:
     def __init__(self) -> None:
         self.feature = []
         self.inSphere = []
+        self.inNormalPlane = []
         self.bearings = []
 
     def __repr__(self) -> str:
@@ -31,6 +21,7 @@ class actualData:
     def __init__(self) -> None:
         self.feature = []
         self.inSphere = []
+        self.inNormalPlane = []
         self.bearings = []
 
     def __repr__(self) -> str:
@@ -61,12 +52,81 @@ class drawArucoClass:
     def drawAruco(self, img: np.ndarray, info: tuple) -> np.ndarray:
         self.img = img.copy()
         drawArucoPoints(self.img, info)
-        # return self.img
 
     def drawNew(self, info: np.ndarray, color: tuple = (0, 255, 0)):
         for i in range(info.shape[0]):
             cv2.circle(self.img, tuple(info[i]), 3, color, -1)
-        # return self.img
+
+
+class adaptativeGain:
+    def __init__(self, gain_init: float, gain_max: float, l_prime: float) -> None:
+        """
+        Adaptative gain function
+
+        Parameters
+            gain_init: float -> Minimum gain
+            gain_max: float -> Maximum gain
+            l_prime: float -> Constant
+
+        Returns when called
+            gain: float -> Gain
+
+        Example
+            >>> gain = adaptativeGain(1, 0.1, 0.1)
+            >>> gain(0.01)
+        """
+        self.gain_max = gain_max
+        self.gain_init = gain_init
+        self.l_prime = l_prime
+
+        if (l_prime > 0) and (gain_init > gain_max):
+            raise ValueError(
+                "The gain_init must be less than gain_max when l_prime > 0 due to the exponential function"
+            )
+
+        if (l_prime < 0) and (gain_init < gain_max):
+            raise ValueError(
+                "The gain_init must be greater than gain_max when l_prime < 0 due to the exponential function"
+            )
+        
+        self.gain = self.last_gain = self.gain_init
+        self.gain_0 = self.last_gain_0 = self.gain
+        self.gain_1 = self.last_gain_1 = self.gain
+        self.gain_2 = self.last_gain_2 = self.gain
+
+    def __call__(self, error: float, axis=None) -> float:
+        try:
+            if axis is None:
+                self.gain = self.getGain(error)
+            elif axis == 0:
+                self.gain_0 = self.getGain(error)
+                self.gain = self.last_gain_0 = self.gain_0
+            elif axis == 1:
+                self.gain_1 = self.getGain(error)
+                self.gain = self.last_gain_1 = self.gain_1
+            elif axis == 2:
+                self.gain_2 = self.getGain(error)
+                self.gain = self.last_gain_2 = self.gain_2
+        except:
+            if axis is None:
+                self.gain = self.last_gain
+            elif axis == 0:
+                self.gain_0 = self.last_gain_0
+            elif axis == 1:
+                self.gain_1 = self.last_gain_1
+            elif axis == 2:
+                self.gain_2 = self.last_gain_2
+
+        self.last_gain = self.gain
+        return self.gain
+
+    def getGain(self, error: float) -> float:
+        if self.gain_init != self.gain_max:
+            return self.gain_init + (self.gain_max - self.gain_init) * np.exp(
+                -error * self.l_prime / (self.gain_max - self.gain_init)
+            )
+        else:
+            return self.gain_init
 
 
 def load_yaml(PATH, drone_id) -> dict:
@@ -96,22 +156,22 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
 
     parameters = aruco.DetectorParameters()
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(
+    corners, ids, _ = aruco.detectMarkers(
         img, aruco_dict, parameters=parameters
     )
-    return np.int32(corners), ids, np.int32(rejectedImgPoints)
+    return np.int32(corners), ids
 
 
 # def drawArucoSimple(img: np.ndarray, info: tuple) -> np.ndarray:
 #     temp_img = img.copy()
-#     corners, ids, rejectedImgPoints = info
+#     corners, ids, _ = info
 #     return aruco.drawDetectedMarkers(temp_img, corners, ids)
 
 
 def drawArucoPoints(
     img: np.ndarray, info: tuple, color: tuple = (0, 0, 255)
 ) -> np.ndarray:
-    corners, ids, rejectedImgPoints = info
+    corners, ids = info
     for i in range(len(ids)):
         for j in range(4):
             cv2.circle(img, tuple(corners[i][0][j]), 3, color, -1)
@@ -119,11 +179,14 @@ def drawArucoPoints(
 
 
 def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
-    temp = []
+    inSphere = []
+    inNormalPlane = []
     temp_points = np.concatenate((points, np.ones((points.shape[0], 1))), axis=1)
     for i in range(temp_points.shape[0]):
-        temp.append(normalize(invK @ temp_points[i]))
-    return np.array(temp)
+        temp = invK @ temp_points[i]
+        inNormalPlane.append(temp[:2])
+        inSphere.append(normalize(temp))
+    return np.array(inSphere), np.array(inNormalPlane)
 
 
 def normalize(x: np.ndarray) -> np.ndarray:
@@ -135,21 +198,12 @@ def ortoProj(x: np.ndarray) -> np.ndarray:
     return np.eye(3) - (temp @ temp.T) / np.linalg.norm(temp) ** 2
 
 
-class adaptativeGain:
-    def __init__(self, gain_max, gain_init, l_prime) -> None:
-        self.gain_max = gain_max
-        self.gain_init = gain_init
-        self.l_prime = l_prime
+def decorator_timer(function):
+    def wrapper(*args, **kwargs):
+        t1 = time.time()
+        result = function(*args, **kwargs)
+        end = time.time() - t1
+        print(f"\n\t[INFO] Function '{function.__name__}' took {end:5f} seconds")
+        return result
 
-        self.last_gain = gain_max
-
-    def __call__(self, error):
-        try:
-            self.gain = self.gain_max + (self.gain_init - self.gain_max) * np.exp(
-                -error * self.l_prime / (self.gain_init - self.gain_max)
-            )
-            self.last_gain = self.gain
-        except:
-            self.gain = self.last_gain
-
-        return self.gain
+    return wrapper

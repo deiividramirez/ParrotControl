@@ -1,3 +1,4 @@
+from math import pi
 import numpy as np
 import time
 import cv2
@@ -56,24 +57,61 @@ class BearingOnly:
             exit()
 
         self.storeImage = None
-        self.initTime = 0
-        self.actualTime = 0
-        self.error = np.zeros((1, 3))
+        self.initTime = time.time()
+        self.actualTime = time.time()
+        self.error = np.zeros((2, 3))
+        self.errorVec = np.zeros((1, 3))
+        self.errorNorm = 0
+        self.errorPix = 0
+        self.gains_v_kp = np.zeros((3, 1))
+        self.gains_v_ki = np.zeros((3, 1))
+        self.gains_w_kp = np.zeros((3, 1))
+
+        self.integral = np.zeros((3, 1))
+
+        self.gain_v_kp = adaptativeGain(
+            self.yaml["gain_v_kp_ini"],
+            self.yaml["gain_v_kp_max"],
+            self.yaml["l_prime_v_kp"],
+        )
+
+        self.gain_v_ki = adaptativeGain(
+            self.yaml["gain_v_ki_ini"],
+            self.yaml["gain_v_ki_max"],
+            self.yaml["l_prime_v_ki"],
+        )
+
+        self.gain_w_kp = adaptativeGain(
+            self.yaml["gain_w_kp_ini"],
+            self.yaml["gain_w_kp_max"],
+            self.yaml["l_prime_w_kp"],
+        )
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
         self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w+")
         self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w+")
         self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w+")
+        self.file_errorPix = open(PATH / "out" / f"drone_{drone_id}_errorPix.txt", "w+")
         self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w+")
+        self.file_v_kp = open(PATH / "out" / f"drone_{drone_id}_v_kp.txt", "w+")
+        self.file_v_ki = open(PATH / "out" / f"drone_{drone_id}_v_ki.txt", "w+")
+        self.file_w_kp = open(PATH / "out" / f"drone_{drone_id}_w_kp.txt", "w+")
+        # self.file_w_ki = open(PATH / "out" / f"drone_{drone_id}_w_ki.txt", "w+")
+        self.file_int = open(PATH / "out" / f"drone_{drone_id}_int.txt", "w+")
 
+        self.file_int.write("0.0 0.0 0.0\n")
+        self.file_v_kp.write("0.0\n")
+        self.file_v_ki.write("0.0\n")
+        self.file_w_kp.write("0.0\n")
+        self.file_time.write("0.0\n")
         self.file_vel_x.write("0.0\n")
         self.file_vel_y.write("0.0\n")
         self.file_vel_z.write("0.0\n")
         self.file_vel_yaw.write("0.0\n")
-        self.file_time.write("0.0\n")
-        self.error.tofile(self.file_error, sep=" ", format="%s")
+        self.errorVec.tofile(self.file_error, sep=" ", format="%s")
         self.file_error.write("\n")
+        self.file_errorPix.write("0.0\n")
 
     def __name__(self) -> str:
         return (
@@ -107,10 +145,13 @@ class BearingOnly:
             self.desiredData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        self.desiredData.inSphere = sendToSphere(
+        self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
         self.desiredData.bearings = self.middlePoint(self.desiredData.inSphere)
+
+        # print("Desired bearings: ", self.desiredData.bearings)
+        # exit()
 
         return 0
 
@@ -139,13 +180,13 @@ class BearingOnly:
             self.actualData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        self.actualData.inSphere = sendToSphere(
+        self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
         self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
 
         return 0
-    
+
     @decorator_timer
     def getVels(self, actualImage: np.ndarray, imgAruco: tuple) -> np.ndarray:
         """
@@ -165,9 +206,9 @@ class BearingOnly:
         #     return self.input
         # else:
         #     self.storeImage = actualImage
-        self.storeImage = actualImage
+        # self.storeImage = actualImage
 
-        if self.getActualData(actualImage, imgAruco) == -1:
+        if self.getActualData(actualImage, imgAruco) < 0:
             print("[ERROR] Some ArUco's were not found")
             self.input = np.zeros((6,))
             self.save()
@@ -177,7 +218,35 @@ class BearingOnly:
         print("Actual bearings", self.actualData.bearings)
 
         self.error = self.actualData.bearings - self.desiredData.bearings
-        print("Error", np.mean(self.error.T, axis=0))
+        self.errorVec = np.linalg.norm(self.error, axis=0)
+        self.errorNorm = np.linalg.norm(self.errorVec)
+        self.errorPix = np.linalg.norm(
+            self.actualData.inNormalPlane - self.desiredData.inNormalPlane
+        )
+
+        self.gains_v_kp = np.array(
+            [
+                self.gain_v_kp(self.errorVec[0], 0),
+                self.gain_v_kp(self.errorVec[1], 1),
+                self.gain_v_kp(self.errorVec[2], 2),
+            ]
+        ).reshape(-1, 1)
+
+        self.gains_v_ki = np.array(
+            [
+                self.gain_v_ki(self.errorVec[0], 0),
+                self.gain_v_ki(self.errorVec[1], 1),
+                self.gain_v_ki(self.errorVec[2], 2),
+            ]
+        ).reshape(-1, 1)
+
+        self.gains_w_kp = np.array(
+            [
+                self.gain_w_kp(self.errorVec[0], 0),
+                self.gain_w_kp(self.errorVec[1], 1),
+                self.gain_w_kp(self.errorVec[2], 2),
+            ]
+        ).reshape(-1, 1)
 
         U = np.zeros((3, 1))
         for i in range(self.actualData.bearings.shape[0]):
@@ -188,16 +257,31 @@ class BearingOnly:
             )
             U += temp.reshape(-1, 1)
 
-        self.vels = np.concatenate((U, np.zeros((3, 1))), axis=0, dtype=np.float32)
+        self.integral += np.sign(U) * 0.033
+
+        self.vels = np.concatenate(
+            (
+                (self.gains_v_kp * U) + (self.gains_v_ki * self.integral),
+                self.gains_w_kp * np.zeros((3, 1)),
+            ),
+            axis=0,
+            dtype=np.float32,
+        )
 
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
             axis=0,
+            dtype=np.float32,
         ).reshape((6,))
 
-        self.input[:3] = self.yaml["gain_v"] * self.input[:3]
-        self.input[:3] = self.yaml["gain_w"] * self.input[:3]
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
+
+        if self.yaml["vels"] == 1:
+            print("Input before %: ", self.input)
+            self.input[:3] = self.input[:3] * 100 / self.yaml["max_vel"]
+            self.input = np.clip(self.input, -60, 60)
+            self.input[2] = np.clip(self.input[2], -40, 40)
+            print("Input  after %: ", self.input)
 
         self.save()
         return self.input
@@ -211,10 +295,22 @@ class BearingOnly:
             self.file_vel_z.write(f"{self.input[2]}\n")
             self.file_vel_yaw.write(f"{self.input[5]}\n")
             self.file_time.write(f"{self.actualTime}\n")
-            np.linalg.norm(self.error, axis=0).tofile(
-                self.file_error, sep="\t", format="%s"
-            )
+            self.file_errorPix.write(f"{self.errorPix}\n")
+
+            self.errorVec.tofile(self.file_error, sep="\t", format="%s")
             self.file_error.write("\n")
+
+            np.mean(self.gains_v_kp).tofile(self.file_v_kp, sep="\t", format="%s")
+            self.file_v_kp.write("\n")
+
+            np.mean(self.gains_v_ki).tofile(self.file_v_ki, sep="\t", format="%s")
+            self.file_v_ki.write("\n")
+
+            np.mean(self.gains_w_kp).tofile(self.file_w_kp, sep="\t", format="%s")
+            self.file_w_kp.write("\n")
+
+            self.integral.tofile(self.file_int, sep="\t", format="%s")
+            self.file_int.write("\n")
 
             # print(f"x: {self.input[0]}",
             #         f"y: {self.input[1]}",
@@ -224,7 +320,7 @@ class BearingOnly:
             #         f"time: {self.actualTime:.2f}",
             #         sep="\t")
 
-            print("[INFO] Error: ", np.linalg.norm(self.error, ord=1))
+            print("[INFO] Error: ", self.errorNorm)
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
 
@@ -252,6 +348,12 @@ class BearingOnly:
         self.file_vel_yaw.close()
         self.file_time.close()
         self.file_error.close()
+        self.file_errorPix.close()
+        self.file_v_kp.close()
+        self.file_v_ki.close()
+        self.file_w_kp.close()
+        # self.file_w_ki.close()
+        self.file_int.close()
 
 
 if __name__ == "__main__":
