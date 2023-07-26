@@ -88,7 +88,7 @@ class adaptativeGain:
             raise ValueError(
                 "The gain_init must be greater than gain_max when l_prime < 0 due to the exponential function"
             )
-        
+
         self.gain = self.last_gain = self.gain_init
         self.gain_0 = self.last_gain_0 = self.gain
         self.gain_1 = self.last_gain_1 = self.gain
@@ -156,9 +156,7 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
 
     parameters = aruco.DetectorParameters()
-    corners, ids, _ = aruco.detectMarkers(
-        img, aruco_dict, parameters=parameters
-    )
+    corners, ids, _ = aruco.detectMarkers(img, aruco_dict, parameters=parameters)
     return np.int32(corners), ids
 
 
@@ -186,6 +184,9 @@ def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
         temp = invK @ temp_points[i]
         inNormalPlane.append(temp[:2])
         inSphere.append(normalize(temp))
+        # print(i, temp_points[i], temp)
+        # print(inNormalPlane[-1])
+        # print(inSphere[-1])
     return np.array(inSphere), np.array(inNormalPlane)
 
 
@@ -195,7 +196,7 @@ def normalize(x: np.ndarray) -> np.ndarray:
 
 def ortoProj(x: np.ndarray) -> np.ndarray:
     temp = x.reshape(3, 1)
-    return np.eye(3) - (temp @ temp.T) / np.linalg.norm(temp) ** 2
+    return (np.eye(3) - (temp @ temp.T)) / np.linalg.norm(temp) ** 2
 
 
 def decorator_timer(function):

@@ -34,13 +34,12 @@ def normalize(v) -> np.ndarray:
     return v / np.linalg.norm(v) if np.linalg.norm(v) != 0 else v
 
 
-marker_1 = np.array([-752.3, 694.3, 1324.5]) / 1000
-marker_2 = np.array([800.1, 806.0, 1292.1]) / 1000
-drone = np.array([68.4, 823.1, -942.6]) / 1000
-drone = np.array([68.4, 823.1-500, -942.6]) / 1000
+marker_1 = np.array([809.0, 684.5, 1695.1]) / 1000
+marker_2 = np.array([-814.3, 686.2, 1728.0]) / 1000
+drone = np.array([55.9, 823.2, -68.1]) / 1000
 
-bearing_1_drone = np.array([-0.3435904, -0.23595522, 0.9089944])
-bearing_2_drone = np.array([0.3826676, -0.18342136, 0.9054955])
+bearing_1_drone = np.array([0.45743403, -0.22994335, 0.8589995])
+bearing_2_drone = np.array([-0.4199261, -0.23009773, 0.87790495])
 
 t = np.array([0.09, 0, 0])
 eRc = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
@@ -80,11 +79,10 @@ bearing_2_world = normalize(marker_1_world - drone_world)
 
 print("\nBearing 1 world: ", bearing_1_world, np.linalg.norm(bearing_1_world))
 print("Bearing 1 drone: ", bearing_1_drone, np.linalg.norm(bearing_1_drone))
+print("Differece 1: ", np.linalg.norm(bearing_1_world - bearing_1_drone))
 
 print("\nBearing 2 world: ", bearing_2_world, np.linalg.norm(bearing_2_world))
 print("Bearing 2 drone: ", bearing_2_drone, np.linalg.norm(bearing_2_drone))
-
-print("\nDifferece 1: ", np.linalg.norm(bearing_1_world - bearing_1_drone))
 print("Differece 2: ", np.linalg.norm(bearing_2_world - bearing_2_drone))
 
 # PLOTEO DE LOS EJES
@@ -231,6 +229,21 @@ ax1.plot(
     [drone_world[2], drone_world[2] + 3 * bearing_2_drone[2]],
     color="r",
 )
+ax1.plot(
+    [drone_world[0], drone_world[0] + 3 * bearing_1_world[0]],
+    [drone_world[1], drone_world[1] + 3 * bearing_1_world[1]],
+    [drone_world[2], drone_world[2] + 3 * bearing_1_world[2]],
+    color="g",
+    alpha=0.5,
+)
+ax1.plot(
+    [drone_world[0], drone_world[0] + 3 * bearing_2_world[0]],
+    [drone_world[1], drone_world[1] + 3 * bearing_2_world[1]],
+    [drone_world[2], drone_world[2] + 3 * bearing_2_world[2]],
+    color="g",
+    alpha=0.5,
+)
+
 
 # PLOT REAL WORLD AXIS
 ax.quiver(

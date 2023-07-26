@@ -1,10 +1,13 @@
 ######### This file contains the configuration for the drone #########
 
 #### Camera intrinsic parameters K as a 9-length vector
-camera_intrinsic_parameters: [745, 0, 640, 0, 745, 360, 0, 0, 1]
+# camera_intrinsic_parameters: [745, 0, 640, 0, 745, 360, 0, 0, 1]
+# camera_intrinsic_parameters: [760, 0, 640, 0, 760, 360, 0, 0, 1]
+camera_intrinsic_parameters: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
 
 #### seguimiento must contain the ArUco IDs that the drone will follow as a list
-seguimiento: [96, 99]
+# seguimiento: [96, 97]
+seguimiento: [96, 97, 99]
 # seguimiento: [96, 97, 98, 99]
 
 #### This gains are used for the control law
@@ -15,27 +18,27 @@ gain_v_kp_max: 1.0
 gain_v_kp_ini: 0.5
 l_prime_v_kp: 0.1
 
-# Proportional rotation gains
-gain_w_kp_max: 0.8
-gain_w_kp_ini: 0.2
-l_prime_w_kp: 1.0
-
 #### Leaders do not require integral gains
 # Integral translation gains
 gain_v_ki_max: 0.0
 gain_v_ki_ini: 0.0
 l_prime_v_ki: 1.0
 
+# Proportional rotation gains
+gain_w_kp_max: 0.8
+gain_w_kp_ini: 0.2
+l_prime_w_kp: 1.0
 
-# Saturation values from (-max_vel, max_vel)
+#### Saturation values from (-max_vel, max_vel)
 max_vel: 0.3
 
-# -> Leader             |  -> Follower
-#     1: 1/dist,        |       1: -P_gij * gij*
-#     2: dist           |       2: gij - gij*
+#### Control law
+# -> Leader        |   -> Follower
+#  1: 1/dist,     |     1: -P_gij * gij*
+#  2: dist       |      2: gij - gij*
 control: 2
 
-# Send velocities
+#### Send velocities
 # 0: move_relative
 # 1: fly_direct
 vels: 0

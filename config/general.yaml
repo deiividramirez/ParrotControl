@@ -1,12 +1,12 @@
 SAVE_DESIRED_IMAGES: 0
 SAVE_IMAGES: 1
-SAVE_WITH_ARUCO: 1
+SAVE_WITH_ARUCO: 0
 
 # (iterations int)  Approx 30 iterations per second (30Hz)
 MAX_ITER: 2400
 
 # (seconds float)
-MAX_TIME: 5.0
+MAX_TIME: 20.0
 
 # (Image have to be inside /data/)
 desiredImage: desired_1.jpg

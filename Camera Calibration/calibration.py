@@ -8,7 +8,7 @@ import pathlib
 
 PATH = pathlib.Path(__file__).parent.absolute()
 
-SAMPLES = 20
+SAMPLES = 30
 
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6, 9)

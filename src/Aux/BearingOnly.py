@@ -214,8 +214,10 @@ class BearingOnly:
             self.save()
             return self.input
 
-        print("Desired bearings", self.desiredData.bearings)
-        print("Actual bearings", self.actualData.bearings)
+        [
+            print(f"Desired -> {i}", f"Actual  -> {j}","\n", sep="\n")
+            for i, j in zip(self.desiredData.bearings, self.actualData.bearings)
+        ]
 
         self.error = self.actualData.bearings - self.desiredData.bearings
         self.errorVec = np.linalg.norm(self.error, axis=0)
@@ -250,6 +252,7 @@ class BearingOnly:
 
         U = np.zeros((3, 1))
         for i in range(self.actualData.bearings.shape[0]):
+            print(-ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i])
             temp = (
                 -ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i]
                 if self.yaml["control"] == 1
@@ -297,7 +300,7 @@ class BearingOnly:
             self.file_time.write(f"{self.actualTime}\n")
             self.file_errorPix.write(f"{self.errorPix}\n")
 
-            self.errorVec.tofile(self.file_error, sep="\t", format="%s")
+            (self.rotAndTrans @ self.errorVec).tofile(self.file_error, sep="\t", format="%s")
             self.file_error.write("\n")
 
             np.mean(self.gains_v_kp).tofile(self.file_v_kp, sep="\t", format="%s")
@@ -320,7 +323,8 @@ class BearingOnly:
             #         f"time: {self.actualTime:.2f}",
             #         sep="\t")
 
-            print("[INFO] Error: ", self.errorNorm)
+            print(f"[INFO] Error Vect: {self.errorVec}")
+            print(f"[INFO] Error: {self.errorNorm}")
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
 
