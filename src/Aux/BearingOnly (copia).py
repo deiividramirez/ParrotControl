@@ -148,6 +148,10 @@ class BearingOnly:
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
         self.desiredData.bearings = self.middlePoint(self.desiredData.inSphere)
+
+        # print("Desired bearings: ", self.desiredData.bearings)
+        # exit()
+
         return 0
 
     def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
@@ -175,9 +179,60 @@ class BearingOnly:
             self.actualData.feature, dtype=np.int32
         ).reshape(-1, 2)
 
-        self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
-            self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
-        )
+        min_x = []
+        min_y = []
+        min_z = []
+        # random points from rectangle 0,0 to 1280,720
+        for _ in range(100):
+            self.actualData.feature = np.array([
+                [1280, 720], 
+                [1280, 0],
+                [0, 0],
+                [0, 720],
+                [640, 360],
+            ])
+            for i in range(5000):
+                part_x = np.random.randint(0, 1280, 1)
+                part_y = np.random.randint(0, 720, 1)
+                self.actualData.feature = np.concatenate(
+                    (self.actualData.feature, np.array([part_x, part_y]).reshape(1, 2)),
+                    axis=0,
+                )
+            
+
+            self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
+                self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
+            )
+            
+            min_x.append([np.min(self.actualData.inSphere[:, 0]), np.max(self.actualData.inSphere[:, 0])])
+            min_y.append([np.min(self.actualData.inSphere[:, 1]), np.max(self.actualData.inSphere[:, 1])])
+            min_z.append([np.min(self.actualData.inSphere[:, 2]), np.max(self.actualData.inSphere[:, 2])])
+
+            print(np.min(self.actualData.inSphere[:, 0]), np.min(self.actualData.inSphere[:, 1]), np.min(self.actualData.inSphere[:, 2]))
+            print(np.max(self.actualData.inSphere[:, 0]), np.max(self.actualData.inSphere[:, 1]), np.max(self.actualData.inSphere[:, 2]), "\n")
+
+        print(np.mean(min_x, axis=0), np.mean(min_y, axis=0), np.mean(min_z, axis=0))
+        exit()
+        # Config for plotting with no problem with opencv
+        import matplotlib as plt
+        plt.use("TkAgg")
+        import matplotlib.pyplot as plt
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(self.actualData.inSphere[:, 0], self.actualData.inSphere[:, 1], self.actualData.inSphere[:, 2])
+        # draw unitary sphere
+        # u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+        # x=np.cos(u)*np.sin(v)
+        # y=np.sin(u)*np.sin(v)
+        # z=np.cos(v)
+        # ax.plot_wireframe(x, y, z, color="r", alpha=0.3)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        plt.show()
+
+        exit()
         self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
 
         return 0
@@ -214,28 +269,28 @@ class BearingOnly:
             for i, j in zip(self.desiredData.bearings, self.actualData.bearings)
         ]
 
-        U = np.zeros((3, 1))
-        for i in range(self.actualData.bearings.shape[0]):
-            temp = (
-                (-ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i])
-                if self.yaml["control"] == 1
-                else (self.actualData.bearings[i] - self.desiredData.bearings[i])
-            )
-            U += temp.reshape(-1, 1)
-
-        # self.error = self.actualData.bearings - self.desiredData.bearings
-        # self.errorVec = np.linalg.norm(self.error, axis=0)
-        self.errorVec = np.linalg.norm(U, axis=1).T
+        self.error = self.actualData.bearings - self.desiredData.bearings
+        self.errorVec = np.linalg.norm(self.error, axis=0)
         self.errorNorm = np.linalg.norm(self.errorVec)
         self.errorPix = np.linalg.norm(
             self.actualData.inNormalPlane - self.desiredData.inNormalPlane
         )
 
-        self.gains_v_kp = self.gain_v_kp(2 * self.errorVec)
-        self.gains_v_ki = self.gain_v_ki(2 * self.errorVec)
-        self.gains_w_kp = self.gain_w_kp(2 * self.errorVec)
+        self.gains_v_kp = self.gain_v_kp(self.errorVec)
+        self.gains_v_ki = self.gain_v_ki(self.errorVec)
+        self.gains_w_kp = self.gain_w_kp(self.errorVec)
+
+        U = np.zeros((3, 1))
+        for i in range(self.actualData.bearings.shape[0]):
+            temp = (
+                -ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i]
+                if self.yaml["control"] == 1
+                else self.actualData.bearings[i] - self.desiredData.bearings[i]
+            )
+            U += temp.reshape(-1, 1)
 
         self.integral += np.sign(U) * 0.033
+
         self.vels = np.concatenate(
             (
                 (self.gains_v_kp * U) + (self.gains_v_ki * self.integral),
@@ -298,15 +353,8 @@ class BearingOnly:
             #         f"time: {self.actualTime:.2f}",
             #         sep="\t")
 
-            print(
-                f"[INFO]\n",
-                f"Error: {self.errorNorm}\n",
-                f"Error Vect: {self.errorVec}\n",
-                f"Lambda_v_kp: {self.gains_v_kp.T}\n",
-                f"Lambda_v_ki: {self.gains_v_ki.T}\n",
-                f"Lambda_w_kp: {self.gains_w_kp.T}",
-            )
-
+            print(f"[INFO] Error Vect: {self.errorVec}")
+            print(f"[INFO] Error: {self.errorNorm}")
         except Exception as e:
             print("[ERROR] Error writing in file: ", e)
 

@@ -41,7 +41,7 @@ drone = np.array([55.9, 823.2, -68.1]) / 1000
 bearing_1_drone = np.array([0.45743403, -0.22994335, 0.8589995])
 bearing_2_drone = np.array([-0.4199261, -0.23009773, 0.87790495])
 
-t = np.array([0.09, 0, 0])
+t = np.array([0., 0, 0])
 eRc = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
 eTc = np.vstack((np.hstack((eRc, t.reshape(3, 1))), np.array([0, 0, 0, 1])))
 
@@ -146,16 +146,31 @@ ax.scatter(
 )
 # draw line from drone to 3*bearing
 ax.plot(
+    [drone_world[0], drone_world[0] + 3 * bearing_1_drone[0]],
+    [drone_world[1], drone_world[1] + 3 * bearing_1_drone[1]],
+    [drone_world[2], drone_world[2] + 3 * bearing_1_drone[2]],
+    color="r",
+    alpha=.5,
+)
+ax.plot(
+    [drone_world[0], drone_world[0] + 3 * bearing_2_drone[0]],
+    [drone_world[1], drone_world[1] + 3 * bearing_2_drone[1]],
+    [drone_world[2], drone_world[2] + 3 * bearing_2_drone[2]],
+    color="r",
+    alpha=.5,
+)
+# draw line from drone to 3*bearing
+ax.plot(
     [drone_world[0], drone_world[0] + 3 * bearing_1_world[0]],
     [drone_world[1], drone_world[1] + 3 * bearing_1_world[1]],
     [drone_world[2], drone_world[2] + 3 * bearing_1_world[2]],
-    color="r",
+    color="g",
 )
 ax.plot(
     [drone_world[0], drone_world[0] + 3 * bearing_2_world[0]],
     [drone_world[1], drone_world[1] + 3 * bearing_2_world[1]],
     [drone_world[2], drone_world[2] + 3 * bearing_2_world[2]],
-    color="r",
+    color="g",
 )
 
 ax1 = plt.figure().add_subplot(projection="3d", title="Drone")

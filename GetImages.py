@@ -221,14 +221,14 @@ class UserVision:
                                 0,
                                 0.05,
                             )
+
+                    #################################################################################
+                    while (time.time() - initialTIME < 0.03) and (not self.clicked):
+                        time.sleep(0.001)
                     print(
                         f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
                     )
 
-                    #################################################################################
-                    if self.yaml["takeoff"] == 0:
-                        # TEMPORAL SLEEP
-                        time.sleep(.1)
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")
             self.safe_close()
@@ -300,7 +300,11 @@ class UserVision:
                 if lastImg is None:
                     lastImg = img
                 else:
-                    if not np.array_equal(lastImg, img) and self.takeImage and not self.firstRun:
+                    if (
+                        not np.array_equal(lastImg, img)
+                        and self.takeImage
+                        and not self.firstRun
+                    ):
                         lastImg = img.copy()
                         cv2.imwrite(
                             f"{actualPATH}/img/{self.indexImgSave:06d}_{self.control.drone_id}.jpg",

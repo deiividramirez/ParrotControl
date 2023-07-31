@@ -1,35 +1,32 @@
+from src.Aux.Funcs import loadGeneralYaml, load_yaml
+import matplotlib
+
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
 import sys
 
-PATH = pathlib.Path(__file__).parent.absolute()
 colors = ["blue", "orange", "green", "red", "purple", "brown", "pink", "gray", "olive"]
 
-dron = sys.argv[1] if len(sys.argv) > 1 else 1
+PATH = pathlib.Path(__file__).parent.absolute()
+CONTROLS = [["1/dij", "dij"], ["-P_gij * gij*", "gij-gij*"]]
+genYaml = loadGeneralYaml(PATH)
+droneYaml = load_yaml(PATH)
 
+TITLE = f"Summary {'leader' if genYaml['Leader_Follower'] == 0 else 'follower'} drone with control ({CONTROLS[genYaml['Leader_Follower']][droneYaml['control']-1]})"
+
+dron = sys.argv[1] if len(sys.argv) > 1 else 1
 if (integ := np.loadtxt(f"{PATH}/out/drone_{dron}_int.txt")).size in (0, 1):
     integ = None
 
 if integ is None:
-    fig, ax = plt.subplots(
-        3,
-        1,
-        figsize=(10, 5),
-        sharex=True,
-        num=f"Velocities and errors for all drones",
-    )
+    fig, ax = plt.subplots(3, 1, figsize=(10, 5), sharex=True, num=TITLE)
 else:
-    fig, ax = plt.subplots(
-        2,
-        2,
-        figsize=(10, 5),
-        sharex=True,
-        num=f"Velocities and errors for all drones",
-    )
+    fig, ax = plt.subplots(2, 2, figsize=(10, 5), sharex=True, num=TITLE)
 
-fig.suptitle(f"Velocities and errors for all drones", fontsize=16)
-ax = ax.reshape(-1)    
+fig.suptitle(TITLE, fontsize=14)
+ax = ax.reshape(-1)
 
 err = np.loadtxt(f"{PATH}/out/drone_{dron}_error.txt")
 err_pix = np.loadtxt(f"{PATH}/out/drone_{dron}_errorPix.txt")
@@ -48,7 +45,7 @@ if err.size == 1:
 
 print(
     f"""
-Drone {dron}
+Drone {genYaml['Leader_Follower']} with control ({CONTROLS[genYaml['Leader_Follower']][droneYaml['control']-1]})
 Tiempo total -> {time[-1]:5f}
 {f'Error final -> {err[-1]:5f} -- Max error -> {np.max(err[1:], axis=0):5f}' if len(err.shape) == 1 else f'Error final -> ({err[-1, 0]:5f}, {err[-1, 1]:5f}, {err[-1, 2]:5f}) -- Max error -> ({np.max(err[1:, 0], axis=0):5f}, {np.max(err[1:, 1], axis=0):5f}, {np.max(err[1:, 2], axis=0):5f})'}
 Velocidad final -> ({vx[-1]:5f}, {vy[-1]:5f}, {vz[-1]:5f}, {vyaw[-1]:5f})

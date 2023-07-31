@@ -94,28 +94,14 @@ class adaptativeGain:
         self.gain_1 = self.last_gain_1 = self.gain
         self.gain_2 = self.last_gain_2 = self.gain
 
-    def __call__(self, error: float, axis=None) -> float:
-        try:
-            if axis is None:
-                self.gain = self.getGain(error)
-            elif axis == 0:
-                self.gain_0 = self.getGain(error)
-                self.gain = self.last_gain_0 = self.gain_0
-            elif axis == 1:
-                self.gain_1 = self.getGain(error)
-                self.gain = self.last_gain_1 = self.gain_1
-            elif axis == 2:
-                self.gain_2 = self.getGain(error)
-                self.gain = self.last_gain_2 = self.gain_2
-        except:
-            if axis is None:
-                self.gain = self.last_gain
-            elif axis == 0:
-                self.gain_0 = self.last_gain_0
-            elif axis == 1:
-                self.gain_1 = self.last_gain_1
-            elif axis == 2:
-                self.gain_2 = self.last_gain_2
+    def __call__(self, error: (float or np.ndarray)) -> float:
+        if isinstance(error, np.ndarray):
+            self.gain_0 = self.getGain(error[0])
+            self.gain_1 = self.getGain(error[1])
+            self.gain_2 = self.getGain(error[2])
+            self.gain = np.array([[self.gain_0], [self.gain_1], [self.gain_2]])
+        else:
+            self.gain = self.getGain(error)
 
         self.last_gain = self.gain
         return self.gain
@@ -129,7 +115,7 @@ class adaptativeGain:
             return self.gain_init
 
 
-def load_yaml(PATH, drone_id) -> dict:
+def load_yaml(PATH: str, drone_id: int = 1) -> dict:
     with open(f"{PATH}/config/drone_{drone_id}.yaml", "r") as f:
         temp = yaml.load(f, Loader=yaml.FullLoader)
         temp["camera_intrinsic_parameters"] = np.array(
@@ -150,6 +136,17 @@ def loadGeneralYaml(PATH) -> dict:
 
 
 def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
+    """
+    Get the aruco corners and ids
+
+    @ Parameters
+        img: np.ndarray -> Image
+        n: int -> Aruco dictionary size
+
+    @ Returns
+        tuple -> (corners, ids)
+
+    """
     if n == 6:
         aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
     if n == 4:
