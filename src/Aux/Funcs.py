@@ -5,9 +5,21 @@ import time
 import yaml
 import cv2
 
+# Set the numpy print options for all the project
+np.set_printoptions(precision=5, suppress=True)
+
 
 class desiredData:
     def __init__(self) -> None:
+        """
+        Class to store the desired data
+
+        @ Attributes
+            feature: np.array -> List of the desired features
+            inSphere: np.array -> List of the desired features in the sphere
+            inNormalPlane: np.array -> List of the desired features in the normal plane
+            bearings: np.array -> List of the desired bearings
+        """
         self.feature = []
         self.inSphere = []
         self.inNormalPlane = []
@@ -19,6 +31,15 @@ class desiredData:
 
 class actualData:
     def __init__(self) -> None:
+        """
+        Class to store the actual data
+
+        @ Attributes
+            feature: np.array -> List of the actual features
+            inSphere: np.array -> List of the actual features in the sphere
+            inNormalPlane: np.array -> List of the actual features in the normal plane
+            bearings: np.array -> List of the actual bearings
+        """
         self.feature = []
         self.inSphere = []
         self.inNormalPlane = []
@@ -30,30 +51,60 @@ class actualData:
 
 class dictDist:
     def __init__(self, i: int, j: int, dist: float, dist2: float) -> None:
+        """
+        Class to store the distance between points for GUO control law
+
+        @ Attributes
+            i: int -> Index of the first point
+            j: int -> Index of the second point
+            dist: float -> Distance between the points in the sphere in desired image
+            dist2: float -> Distance between the points in the sphere in actual image
+
+        """
         self.i = i
         self.j = j
         self.dist = dist
         self.dist2 = dist2
 
     def __repr__(self) -> str:
-        return (
-            # f"i: {self.i} <-> j: {self.j}: d1 -> {self.dist:5f} - d2 -> {self.dist2:5f}"
-            # f"i: {self.i} <-> j: {self.j}: d2-d1 -> {self.dist2-self.dist:5f}"
-            # f"p_{self.i}, p_{self.j} -> {self.dist:5f} - d2 -> {self.dist2:5f} := {self.dist2-self.dist:5f}\n"
-            # f"{self.dist:5f}* (=) {self.dist2:5f}"
-            f"{self.dist - self.dist2:5f}"
-        )
+        return f"{self.dist - self.dist2:5f}"
 
 
 class drawArucoClass:
     def __init__(self) -> None:
+        """
+        Class to draw the aruco points
+
+        @ Attributes
+            img: np.ndarray -> Image
+        """
         self.img = None
 
-    def drawAruco(self, img: np.ndarray, info: tuple) -> np.ndarray:
+    def drawAruco(self, img: np.ndarray, info: tuple) -> None:
+        """
+        Draw the aruco points
+
+        @ Parameters
+            img: np.ndarray -> Image
+            info: tuple -> (corners, ids)
+
+        @ Returns
+            None
+        """
         self.img = img.copy()
         drawArucoPoints(self.img, info)
 
-    def drawNew(self, info: np.ndarray, color: tuple = (0, 255, 0)):
+    def drawNew(self, info: np.ndarray, color: tuple = (0, 255, 0)) -> None:
+        """
+        Draw the new points without replace the image
+
+        @ Parameters
+            info: np.ndarray -> New points
+            color: tuple (optional) -> Color of the points (BGR)
+
+        @ Returns
+            None
+        """
         for i in range(info.shape[0]):
             cv2.circle(self.img, tuple(info[i]), 3, color, -1)
 
@@ -116,6 +167,16 @@ class adaptativeGain:
 
 
 def load_yaml(PATH: str, drone_id: int = 1) -> dict:
+    """
+    Load the yaml file for the drone with id drone_id
+
+    @ Parameters
+        PATH: str -> Path to the yaml file
+        drone_id: int -> Id of the drone
+
+    @ Returns
+        dict -> Dictionary with the yaml file
+    """
     with open(f"{PATH}/config/drone_{drone_id}.yaml", "r") as f:
         temp = yaml.load(f, Loader=yaml.FullLoader)
         temp["camera_intrinsic_parameters"] = np.array(
@@ -131,6 +192,15 @@ def load_yaml(PATH: str, drone_id: int = 1) -> dict:
 
 
 def loadGeneralYaml(PATH) -> dict:
+    """
+    Load the general yaml file
+
+    @ Parameters
+        PATH: str -> Path to the yaml file
+
+    @ Returns
+        dict -> Dictionary with the yaml file
+    """
     with open(f"{PATH}/config/general.yaml", "r") as f:
         return yaml.load(f, Loader=yaml.FullLoader)
 
@@ -144,7 +214,7 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
         n: int -> Aruco dictionary size
 
     @ Returns
-        tuple -> (corners, ids)
+        tuple -> (corners: np.int32, ids: np.int32)
 
     """
     if n == 6:
@@ -154,18 +224,23 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
 
     parameters = aruco.DetectorParameters()
     corners, ids, _ = aruco.detectMarkers(img, aruco_dict, parameters=parameters)
-    return np.int32(corners), ids
-
-
-# def drawArucoSimple(img: np.ndarray, info: tuple) -> np.ndarray:
-#     temp_img = img.copy()
-#     corners, ids, _ = info
-#     return aruco.drawDetectedMarkers(temp_img, corners, ids)
+    return np.int32(corners), np.int32(ids)
 
 
 def drawArucoPoints(
     img: np.ndarray, info: tuple, color: tuple = (0, 0, 255)
 ) -> np.ndarray:
+    """
+    Draw the aruco points
+
+    @ Parameters
+        img: np.ndarray -> Image
+        info: tuple -> (corners, ids)
+        color: tuple (optional) -> Color of the points (BGR)
+
+    @ Returns
+        img: np.ndarray -> Image with the aruco points
+    """
     corners, ids = info
     for i in range(len(ids)):
         for j in range(4):
@@ -174,6 +249,16 @@ def drawArucoPoints(
 
 
 def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
+    """
+    Send the points to the sphere by the Unified Sphere Model Camera Projection Model
+
+    @ Parameters
+        points: np.ndarray -> Points in the image
+        invK: np.ndarray -> Inverse of the camera intrinsic parameters
+
+    @ Returns
+        tuple (np.ndarray, np.ndarray) -> (points in the sphere, points in the normal plane)
+    """
     inSphere = []
     inNormalPlane = []
     temp_points = np.concatenate((points, np.ones((points.shape[0], 1))), axis=1)
@@ -181,22 +266,54 @@ def sendToSphere(points: np.ndarray, invK: np.ndarray) -> np.ndarray:
         temp = invK @ temp_points[i]
         inNormalPlane.append(temp[:2])
         inSphere.append(normalize(temp))
-        # print(i, temp_points[i], temp)
-        # print(inNormalPlane[-1])
-        # print(inSphere[-1])
     return np.array(inSphere), np.array(inNormalPlane)
 
 
 def normalize(x: np.ndarray) -> np.ndarray:
+    """
+    Normalize a vector
+
+    @ Parameters
+        x: np.ndarray -> Vector
+
+    @ Returns
+        np.ndarray -> Normalized vector
+    """
     return x if (norm := np.linalg.norm(x)) == 0 else x / norm
 
 
 def ortoProj(x: np.ndarray) -> np.ndarray:
+    """
+    Calculate the ortogonal projection of a vector in R^3
+
+    @ Parameters
+        x: np.ndarray -> Vector in R^3
+
+    @ Returns
+        np.ndarray -> Orto projection of the vector size 3x3
+    """
     temp = x.reshape(3, 1)
     return (np.eye(3) - (temp @ temp.T)) / np.linalg.norm(temp) ** 2
 
 
 def decorator_timer(function):
+    """
+    Decorator to calculate the time of a function
+
+    @ Parameters
+        function: function -> Function to calculate the time
+
+    @ Returns
+        wrapper: function -> Wrapper function
+
+    @ Usage
+        @decorator_timer
+        def function():
+            pass
+
+        function()
+    """
+
     def wrapper(*args, **kwargs):
         t1 = time.time()
         result = function(*args, **kwargs)

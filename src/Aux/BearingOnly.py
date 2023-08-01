@@ -1,10 +1,11 @@
+from pathlib import Path
 import numpy as np
 import time
 import cv2
 
-from pathlib import Path
 
 PATH = Path(__file__).parent.absolute().parent.absolute().parent.absolute()
+
 
 if __name__ == "__main__":
     # load python file from src/Aux/Funcs.py
@@ -47,6 +48,16 @@ class BearingOnly:
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
+        n = len(self.yaml["seguimiento"])
+        if n == 1:
+            print("[ERROR] Only one ArUco is not allowed")
+            exit()
+        elif n > 2:
+            raw = input(
+                f"[INFO] Using {n} ArUco markers for {n} bearing measurements. Continue? (y/n): "
+            )
+            if raw.lower() != "y":
+                exit()
         print(
             f"[INFO] Control law {'(-P_gij * gij*)' if self.yaml['control'] == 1 else '(gij - gij*)'}"
         )
@@ -235,7 +246,7 @@ class BearingOnly:
         self.gains_v_ki = self.gain_v_ki(2 * self.errorVec)
         self.gains_w_kp = self.gain_w_kp(2 * self.errorVec)
 
-        self.integral += np.sign(U) * 0.033
+        self.integral += np.sign(U) * 0.03
         self.vels = np.concatenate(
             (
                 (self.gains_v_kp * U) + (self.gains_v_ki * self.integral),
@@ -294,17 +305,17 @@ class BearingOnly:
             #         f"y: {self.input[1]}",
             #         f"z: {self.input[2]}",
             #         f"yaw: {self.input[5]}",
-            #         f"error: {error:.5f}",
+            #         f"error: {error:.2f}",
             #         f"time: {self.actualTime:.2f}",
             #         sep="\t")
 
             print(
                 f"[INFO]\n",
-                f"Error: {self.errorNorm}\n",
+                f"Error: {self.errorNorm:.5f}\n",
                 f"Error Vect: {self.errorVec}\n",
-                f"Lambda_v_kp: {self.gains_v_kp.T}\n",
-                f"Lambda_v_ki: {self.gains_v_ki.T}\n",
-                f"Lambda_w_kp: {self.gains_w_kp.T}",
+                f"Lambda_v_kp -> x: {self.gains_v_kp[0,0]:.2f}, y: {self.gains_v_kp[1,0]:.2f}, z: {self.gains_v_kp[2,0]:.2f}\n",
+                f"Lambda_v_ki -> x: {self.gains_v_ki[0,0]:.2f}, y: {self.gains_v_ki[1,0]:.2f}, z: {self.gains_v_ki[2,0]:.2f}\n",
+                f"Lambda_w_kp -> x: {self.gains_w_kp[0,0]:.2f}, y: {self.gains_w_kp[1,0]:.2f}, z: {self.gains_w_kp[2,0]:.2f}\n",
             )
 
         except Exception as e:

@@ -1,10 +1,11 @@
+from pathlib import Path
 import numpy as np
 import time
 import cv2
 
-from pathlib import Path
 
 PATH = Path(__file__).parent.absolute().parent.absolute().parent.absolute()
+
 
 if __name__ == "__main__":
     # load python file from src/Aux/Funcs.py
@@ -47,8 +48,19 @@ class GUO:
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
+        n = len(self.yaml["seguimiento"])
+        quant = (n - 1) * n // 2
+        if n not in (1, 4):
+            raw = input(
+                f"[INFO] Using {n} ArUco markers for control law. That is {quant} distances. Continue? (y/n): "
+            )
+            if raw.lower() != "y":
+                exit()
+        elif n == 4:
+            print("[INFO] Using the 4 most distant points of the 4 ArUco markers")
+
         print(
-            f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'}\n"
+            f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'} with {quant} distances\n"
         )
 
         if self.getDesiredData() < 0:
@@ -271,6 +283,15 @@ class GUO:
             print("[ERROR] Error writing in file: ", e)
 
     def rotationControl(self) -> np.ndarray:
+        """
+        This function returns the angular velocities of the drone in the drone's frame
+
+        @Params:
+            None
+
+        @Returns:
+            np.ndarray -> A (3x1) array for the angular velocities of the drone in the drone's frame
+        """
         L = np.zeros((2 * self.actualData.inNormalPlane.shape[0], 3))
         for i in range(2 * self.actualData.inNormalPlane.shape[0]):
             u, v = self.actualData.inNormalPlane[i // 2]

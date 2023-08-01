@@ -6,6 +6,8 @@ The mp4 is saved in the 'out_sim.mp4' file.
 Created by: David Leonardo Ramírez Parada
 Email: david.parada@cimat.mx
 """
+import matplotlib
+matplotlib.use('TkAgg')
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -48,12 +50,14 @@ for iter, img in enumerate(imgs):
 videoWriter.release()
 print(f'The video has been saved as out_sim_{num}.mp4')
 
-# plot images
-# fig = plt.figure()
-# ims = []
-# for img in imgs:
-    # im = plt.imshow(img, animated=True)
-    # ims.append([im])
-# ani = animation.ArtistAnimation(fig, ims, interval=1000/fps, blit=True, repeat_delay=1000)
-# print('The video is playing.')
-# plt.show()
+cap = cv2.VideoCapture(f'{path}/out/out_sim_{num}.mp4')
+while(cap.isOpened()):
+    ret, frame = cap.read()
+    if ret == True:
+        cv2.imshow('Video', frame)
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
+    else:
+        break
+cap.release()
+cv2.destroyAllWindows()

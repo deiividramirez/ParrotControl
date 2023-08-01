@@ -1,0 +1,3 @@
+alias plot="python plot.py"
+alias control="python OpenControl.py"
+alias video="python makeMP4.py"
