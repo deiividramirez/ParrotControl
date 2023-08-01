@@ -50,49 +50,49 @@ You can configurate all the parameters in the `*"general.yaml"*` file, and the n
 
 Explanation of the parameters in the `*"general.yaml"*` file:
 
-- > `**SAVE_IMAGES**`: This parameter is useful for saving the images of the drone's camera. If you want to save the images, you have to change the variable to 1.
+- `**SAVE_IMAGES**`: This parameter is useful for saving the images of the drone's camera. If you want to save the images, you have to change the variable to 1.
 
-- > `**SAVE_WITH_ARUCO**` If you want to save the images with the points given by the ArUco marker, you have to change the variable to 1.
+- `**SAVE_WITH_ARUCO**` If you want to save the images with the points given by the ArUco marker, you have to change the variable to 1.
 
-- > `**MAX_ITERATIONS**`: This parameter is for setting the maximum number of iterations for the control.
+- `**MAX_ITERATIONS**`: This parameter is for setting the maximum number of iterations for the control.
 
-- > `**MAX_TIME**`: This parameter is for setting the maximum time for the control in seconds.
+- `**MAX_TIME**`: This parameter is for setting the maximum time for the control in seconds.
 
-- > `**desiredImage**` This parameter is the name of the image that will be used for the control. The image must be in the `*"/data"*` folder.
+- `**desiredImage**` This parameter is the name of the image that will be used for the control. The image must be in the `*"/data"*` folder.
 
-- > `**takeoff**`: This parameter is for taking-off the drone or not. This can be helful for testing the control without taking-off the drone, or for saving the desired image.
+- `**takeoff**`: This parameter is for taking-off the drone or not. This can be helful for testing the control without taking-off the drone, or for saving the desired image.
 
-- > `**Leader_Follower**` This parameter is for setting the control for the leader or the follower. If you want to control the leader, you have to change the variable to 0, if you want to control the follower, you have to change the variable to 1.
+- `**Leader_Follower**` This parameter is for setting the control for the leader or the follower. If you want to control the leader, you have to change the variable to 0, if you want to control the follower, you have to change the variable to 1.
 
 Explanation of the parameters in the `*"drone_1.yaml"*` file:
 
-- > `**camera_intrinsic_parameters**` This parameter is for setting the camera intrinsic parameters. The parameters must be in a 3x3 matrix as a vector for the yaml file. You can calibrate the camera drone with the file inside `*"/Camera Calibration"*` folder. Default: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
+- `**camera_intrinsic_parameters**` This parameter is for setting the camera intrinsic parameters. The parameters must be in a 3x3 matrix as a vector for the yaml file. You can calibrate the camera drone with the file inside `*"/Camera Calibration"*` folder. Default: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
 
-- > `**seguimiento**` This parameter is for setting the ArUco marker to keep an eye on. We use the ArUco marker 96, 97, 98, and 99 in our configuration setup.
+- `**seguimiento**` This parameter is for setting the ArUco marker to keep an eye on. We use the ArUco marker 96, 97, 98, and 99 in our configuration setup.
 
-- > `**gain_v_kp_max**` This parameter is for setting the maximum value for the proportional gain for the velocity control.
+- `**gain_v_kp_max**` This parameter is for setting the maximum value for the proportional gain for the velocity control.
 
-- > `**gain_v_kp_ini**` This parameter is for setting the initial value for the proportional gain for the velocity control.
+- `**gain_v_kp_ini**` This parameter is for setting the initial value for the proportional gain for the velocity control.
 
-- > `**l_prime_v_kp**` This parameter is for setting the value for the adaptive gain for the velocity control.
+- `**l_prime_v_kp**` This parameter is for setting the value for the adaptive gain for the velocity control.
 
-- > `**gain_v_ki_max**` This parameter is for setting the maximum value for the integral gain for the velocity control.
+- `**gain_v_ki_max**` This parameter is for setting the maximum value for the integral gain for the velocity control.
 
-- > `**gain_v_ki_ini**` This parameter is for setting the initial value for the integral gain for the velocity control.
+- `**gain_v_ki_ini**` This parameter is for setting the initial value for the integral gain for the velocity control.
 
-- > `**l_prime_v_ki**` This parameter is for setting the value for the adaptive gain for the velocity control.
+- `**l_prime_v_ki**` This parameter is for setting the value for the adaptive gain for the velocity control.
 
-- > `**gain_w_kp_max**` This parameter is for setting the maximum value for the proportional gain for the angular velocity control.
+- `**gain_w_kp_max**` This parameter is for setting the maximum value for the proportional gain for the angular velocity control.
 
-- > `**gain_w_kp_ini**` This parameter is for setting the initial value for the proportional gain for the angular velocity control.
+- `**gain_w_kp_ini**` This parameter is for setting the initial value for the proportional gain for the angular velocity control.
 
-- > `**l_prime_w_kp**` This parameter is for setting the value for the adaptive gain for the angular velocity control.
+- `**l_prime_w_kp**` This parameter is for setting the value for the adaptive gain for the angular velocity control.
 
-- > `**max_vel**` This parameter is for setting the maximum value for the drone's velocity saturation.
+- `**max_vel**` This parameter is for setting the maximum value for the drone's velocity saturation.
 
-- > `**control**` This parameter is for setting the control law for the velocity control. For a leader drone, *1* represents the control law `*1/dist*`, and *2* represents the control law `*dist*`. For a follower drone, *1* represents the control law `*-P_gij * gij*`, and *2* represents the control law `*gij - gij*`.
+- `**control**` This parameter is for setting the control law for the velocity control. For a leader drone, *1* represents the control law `*1/dist*`, and *2* represents the control law `*dist*`. For a follower drone, *1* represents the control law `*-P_gij * gij*`, and *2* represents the control law `*gij - gij*`.
 
-- > `**vels**` This parameter is for setting the velocity control in the PyParrot library. *0* represents the `*move_relative*` command, and *1* represents the `*fly_direct*` command.
+- `**vels**` This parameter is for setting the velocity control in the PyParrot library. *0* represents the `*move_relative*` command, and *1* represents the `*fly_direct*` command.
 
 ### Disclaimer:
 
@@ -126,7 +126,7 @@ This script was developed for the Parrot Bebop 2 drone. The IP address of the dr
 
 ## Autores ✒️
 
-- > `**David R`amírez** * [deiividramirez](https://github.com/deiividramirez) *
+- `**David R`amírez** * [deiividramirez](https://github.com/deiividramirez) *
 
 
 <!-- ## License 📄 -->
