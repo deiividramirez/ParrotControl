@@ -13,7 +13,7 @@ The next instructions will allow you to get a copy of the project running on you
 * Python 3.9.16+
 * OpenCV 4+
 * ffmpeg version 4.2.7-0ubuntu0.1+esm1
-* [PyParrot](https://github.com/amymcgovern/pyparrot) (version included in this repository)
+* [PyParrot](https://github.com/amymcgovern/pyparrot) (Modified version for our purpose included in this repository)
 
 ### Instalation 🔧
 
@@ -33,6 +33,13 @@ Then, you can install the dependencies by running the following command:
 pip install -r requirements.txt
 ```
 
+Now, we have to install the version of PyParrot included in this repository. You can install it by running the following command:
+
+```bash
+cd PyParrot
+python setup.py build
+python setup.py install
+```
 
 #### FFMPEG dependency
 
