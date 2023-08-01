@@ -224,7 +224,7 @@ def get_aruco(img: np.ndarray, n: int = 6) -> tuple:
 
     parameters = aruco.DetectorParameters()
     corners, ids, _ = aruco.detectMarkers(img, aruco_dict, parameters=parameters)
-    return np.int32(corners), np.int32(ids)
+    return np.int32(corners), ids
 
 
 def drawArucoPoints(

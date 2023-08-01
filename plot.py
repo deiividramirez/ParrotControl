@@ -91,6 +91,22 @@ else:
             label=f"y={err[-1, i]:.3f}",
             alpha=0.5,
         )
+    ax[0].step(
+        time[1:],
+        np.linalg.norm(err[1:, :], axis=1),
+        "-",
+        color="k",
+        label=f"Total Error (c)",
+        where="post",
+    )
+    ax[0].plot(
+        [time[1], time[-1]],
+        [temporalErrorNorm := np.linalg.norm(err[-1, :]), temporalErrorNorm],
+        "--",
+        color="k",
+        label=f"y={temporalErrorNorm:.3f}",
+        alpha=0.5,
+    )
 if np.any(err_pix != 0):
     ax[0].plot(time[1:], err_pix[1:], "-", c="r", label="Error (px)")
     ax[0].plot(
@@ -135,12 +151,14 @@ ax[1].set_ylabel("Velocidades")
 
 
 #########################  THIRD PLOT GAINS  #########################
+Gains = [[[], []], [[], []]]
 ax[2].title.set_text("Adaptative gains")
 for index_j, j in enumerate(["v", "w"]):
     for index_i, i in enumerate(["kp", "ki"]):
         try:
             lamb = np.loadtxt(f"{PATH}/out/drone_{DRONE}_{j}_{i}.txt")
             if np.any(lamb != 0):
+                Gains[index_j][index_i] = lamb
                 if len(lamb.shape) == 1:
                     ax[2].plot(
                         time[1:],
@@ -153,30 +171,45 @@ for index_j, j in enumerate(["v", "w"]):
                         [lamb[-1], lamb[-1]],
                         "--",
                         color=COLORS[index_j * 3 + index_i],
-                        label=f"y={lamb[-1]:3f}",
+                        label=f"y={lamb[-1]:.3f}",
                         alpha=0.25,
                     )
                 else:
-                    ejes = ["x", "y", "z"]
-                    for index_ejes in range(3):
-                        ax[2].plot(
-                            time[1:],
-                            lamb[1:, index_ejes],
-                            label=f"{j}:"
-                            + "$\lambda$"
-                            + f"{index_ejes} - {ejes[index_ejes]}",
-                            # label= fj + ": $\lambda_{" + index_ejes + "}$_" + ejes[index_ejes],
-                            color=COLORS[index_j * 3 + index_i],
-                        )
-                        ax[2].plot(
-                            [time[1], time[-1]],
-                            [lamb[-1, index_ejes], lamb[-1, index_ejes]],
-                            "--",
-                            color=COLORS[index_j * 3 + index_i],
-                            label=f"y = {lamb[-1, index_ejes]} {ejes[index_ejes]}",
-                            alpha=0.25,
-                        )
-        except:
+                    ax[2].plot(
+                        time[1:],
+                        np.mean(lamb[1:], axis=1),
+                        label=j + ": $\lambda_{" + i + "}$",
+                        color=COLORS[index_j * 3 + index_i],
+                    )
+                    ax[2].plot(
+                        [time[1], time[-1]],
+                        [tempMean := np.mean(lamb[-1]), tempMean],
+                        "--",
+                        color=COLORS[index_j * 3 + index_i],
+                        label=f"y={tempMean:.3f}",
+                        alpha=0.25,
+                    )
+                # else:
+                #     ejes = ["x", "y", "z"]
+                #     for index_ejes in range(3):
+                #         ax[2].plot(
+                #             time[1:],
+                #             lamb[1:, index_ejes],
+                #             label=f"{j}:"
+                #             + "$\lambda$"
+                #             + f"{index_ejes} - {ejes[index_ejes]}",
+                #             # label= fj + ": $\lambda_{" + index_ejes + "}$_" + ejes[index_ejes],
+                #             color=COLORS[index_j * 3 + index_i],
+                #         )
+                #         ax[2].plot(
+                #             [time[1], time[-1]],
+                #             [lamb[-1, index_ejes], lamb[-1, index_ejes]],
+                #             "--",
+                #             color=COLORS[index_j * 3 + index_i],
+                #             label=f"y =aa {lamb[-1, index_ejes]:.3f} {ejes[index_ejes]}",
+                #             alpha=0.25,
+                #         )
+        except Exception as e:
             pass
 
 ax[2].legend(loc="center left", bbox_to_anchor=(1, 0.5))
@@ -186,10 +219,13 @@ ax[2].set_xlabel("Tiempo (s)")
 
 #########################  FOURTH PLOT INTEGRALS  #########################
 if integ is not None:
-    ax[3].title.set_text("Integrals")
-    ax[3].plot(time[1:], integ[1:, 0], label="$I_x$")
-    ax[3].plot(time[1:], integ[1:, 1], label="$I_y$")
-    ax[3].plot(time[1:], integ[1:, 2], label="$I_z$")
+    ax[3].title.set_text("Applied Integrals")
+    # ax[3].plot(time[1:], integ[1:, 0], label="$I_x$", alpha=0.7)
+    # ax[3].plot(time[1:], integ[1:, 1], label="$I_y$", alpha=0.7)
+    # ax[3].plot(time[1:], integ[1:, 2], label="$I_z$", alpha=0.7)
+    ax[3].plot(time[1:], integ[1:, 0]*Gains[0][1][1:, 0], label="$I_x * \lambda_{ki}$", alpha=0.7)
+    ax[3].plot(time[1:], integ[1:, 1]*Gains[0][1][1:, 1], label="$I_y * \lambda_{ki}$", alpha=0.7)
+    ax[3].plot(time[1:], integ[1:, 2]*Gains[0][1][1:, 2], label="$I_z * \lambda_{ki}$", alpha=0.7)
     ax[3].legend(loc="center left", bbox_to_anchor=(1, 0.5))
     ax[3].set_ylabel("Integrales")
 

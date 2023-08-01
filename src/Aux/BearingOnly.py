@@ -78,6 +78,7 @@ class BearingOnly:
         self.gains_w_kp = np.zeros((3, 1))
 
         self.integral = np.zeros((3, 1))
+        self.integralTime = time.time()
 
         self.gain_v_kp = adaptativeGain(
             self.yaml["gain_v_kp_ini"],
@@ -111,9 +112,9 @@ class BearingOnly:
         self.file_int = open(PATH / "out" / f"drone_{drone_id}_int.txt", "w+")
 
         self.file_int.write("0.0 0.0 0.0\n")
-        self.file_v_kp.write("0.0\n")
-        self.file_v_ki.write("0.0\n")
-        self.file_w_kp.write("0.0\n")
+        self.file_v_kp.write("0.0 0.0 0.0\n")
+        self.file_v_ki.write("0.0 0.0 0.0\n")
+        self.file_w_kp.write("0.0 0.0 0.0\n")
         self.file_time.write("0.0\n")
         self.file_vel_x.write("0.0\n")
         self.file_vel_y.write("0.0\n")
@@ -247,6 +248,10 @@ class BearingOnly:
         self.gains_w_kp = self.gain_w_kp(2 * self.errorVec)
 
         self.integral += np.sign(U) * 0.03
+        if (time.time() - self.integralTime) > self.yaml["reset_integrator"]:
+            self.integralTime = time.time()
+            self.integral = np.zeros((3, 1))
+
         self.vels = np.concatenate(
             (
                 (self.gains_v_kp * U) + (self.gains_v_ki * self.integral),
@@ -261,6 +266,8 @@ class BearingOnly:
             axis=0,
             dtype=np.float32,
         ).reshape((6,))
+
+        self.input[0] *= 2
 
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
@@ -286,19 +293,19 @@ class BearingOnly:
             self.file_errorPix.write(f"{self.errorPix}\n")
 
             # (self.rotAndTrans @ self.errorVec).tofile(self.file_error, sep="\t", format="%s")
-            self.errorVec.tofile(self.file_error, sep="\t", format="%s")
+            (self.rotAndTrans @ self.errorVec).tofile(self.file_error, sep="\t", format="%s")
             self.file_error.write("\n")
 
-            np.mean(self.gains_v_kp).tofile(self.file_v_kp, sep="\t", format="%s")
+            (self.rotAndTrans @ self.gains_v_kp).tofile(self.file_v_kp, sep="\t", format="%s")
             self.file_v_kp.write("\n")
 
-            np.mean(self.gains_v_ki).tofile(self.file_v_ki, sep="\t", format="%s")
+            (self.rotAndTrans @ self.gains_v_ki).tofile(self.file_v_ki, sep="\t", format="%s")
             self.file_v_ki.write("\n")
 
-            np.mean(self.gains_w_kp).tofile(self.file_w_kp, sep="\t", format="%s")
+            (self.rotAndTrans @ self.gains_w_kp).tofile(self.file_w_kp, sep="\t", format="%s")
             self.file_w_kp.write("\n")
 
-            self.integral.tofile(self.file_int, sep="\t", format="%s")
+            (self.rotAndTrans @ self.integral).tofile(self.file_int, sep="\t", format="%s")
             self.file_int.write("\n")
 
             # print(f"x: {self.input[0]}",
@@ -313,9 +320,9 @@ class BearingOnly:
                 f"[INFO]\n",
                 f"Error: {self.errorNorm:.5f}\n",
                 f"Error Vect: {self.errorVec}\n",
-                f"Lambda_v_kp -> x: {self.gains_v_kp[0,0]:.2f}, y: {self.gains_v_kp[1,0]:.2f}, z: {self.gains_v_kp[2,0]:.2f}\n",
-                f"Lambda_v_ki -> x: {self.gains_v_ki[0,0]:.2f}, y: {self.gains_v_ki[1,0]:.2f}, z: {self.gains_v_ki[2,0]:.2f}\n",
-                f"Lambda_w_kp -> x: {self.gains_w_kp[0,0]:.2f}, y: {self.gains_w_kp[1,0]:.2f}, z: {self.gains_w_kp[2,0]:.2f}\n",
+                f"Lambda_v_kp -> x: {self.gains_v_kp[1,0]:.2f}, y: {self.gains_v_kp[2,0]:.2f}, z: {self.gains_v_kp[0,0]:.2f}\n",
+                f"Lambda_v_ki -> x: {self.gains_v_ki[1,0]:.2f}, y: {self.gains_v_ki[2,0]:.2f}, z: {self.gains_v_ki[0,0]:.2f}\n",
+                f"Lambda_w_kp -> x: {self.gains_w_kp[1,0]:.2f}, y: {self.gains_w_kp[2,0]:.2f}, z: {self.gains_w_kp[0,0]:.2f}\n",
             )
 
         except Exception as e:

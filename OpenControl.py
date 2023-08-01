@@ -26,7 +26,7 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "protocol_whitelist;file,rtp,udp"
 # NUMPY CONFIGURATION
 np.set_printoptions(suppress=True, linewidth=sys.maxsize, threshold=sys.maxsize)
 # ACTUAL PATH CONFIGURATION
-actualPATH = pathlib.Path(__file__).parent.absolute()
+ACTUALPATH = pathlib.Path(__file__).parent.absolute()
 
 
 class successConnection:
@@ -88,10 +88,10 @@ class UserVision:
         self.drone.set_video_framerate("30_FPS")
         self.drone.enable_geofence(0)
 
-        self.yaml = Funcs.loadGeneralYaml(actualPATH)
+        self.yaml = Funcs.loadGeneralYaml(ACTUALPATH)
 
         self.actualVision = cv2.VideoCapture(
-            f"{actualPATH}/pyparrot/pyparrot/utils/bebop.sdp"
+            f"{ACTUALPATH}/data/bebop.sdp"
         )
 
         self.getImagesThread = threading.Thread(target=self.getImages)
@@ -307,7 +307,7 @@ class UserVision:
                     ):
                         lastImg = img.copy()
                         cv2.imwrite(
-                            f"{actualPATH}/img/{self.indexImgSave:06d}_{self.control.drone_id}.jpg",
+                            f"{ACTUALPATH}/img/{self.indexImgSave:06d}_{self.control.drone_id}.jpg",
                             img,
                         )
                         self.indexImgSave += 1
@@ -318,7 +318,7 @@ class UserVision:
     def clean(self):
         # delete all images in img folder
         print("[CLEAN] Cleaning img folder")
-        files = glob.glob(f"{actualPATH}/img/*.jpg")
+        files = glob.glob(f"{ACTUALPATH}/img/*.jpg")
         for f in files:
             os.remove(f)
 
@@ -376,13 +376,13 @@ if __name__ == "__main__":
     # Rotation matrix from camera's frame to drone's frame
     R = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
 
-    YALM = Funcs.loadGeneralYaml(actualPATH)
+    YALM = Funcs.loadGeneralYaml(ACTUALPATH)
 
     if YALM["Leader_Follower"] == 0:
-        control = GUO.GUO(cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R)
+        control = GUO.GUO(cv2.imread(f"{ACTUALPATH}/data/{YALM['desiredImage']}"), 1, R)
     elif YALM["Leader_Follower"] == 1:
         control = BO.BearingOnly(
-            cv2.imread(f"{actualPATH}/data/{YALM['desiredImage']}"), 1, R
+            cv2.imread(f"{ACTUALPATH}/data/{YALM['desiredImage']}"), 1, R
         )
     else:
         print(f"{Fore.RED}[ERROR] Error loading control{Style.RESET_ALL}")
