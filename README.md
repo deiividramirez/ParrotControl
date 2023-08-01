@@ -15,6 +15,11 @@ The next instructions will allow you to get a copy of the project running on you
 * ffmpeg version 4.2.7-0ubuntu0.1+esm1
 * [PyParrot](https://github.com/amymcgovern/pyparrot) (Modified version for our purpose included in this repository)
 
+### Big Disclaimer ⚠️
+
+It is your job to program and use your drones responsibly! We are not responsible for any losses or damages of your drones or injuries. Please fly safely and obey all laws.
+
+
 ### Instalation 🔧
 
 
@@ -40,6 +45,8 @@ cd PyParrot
 python setup.py build
 python setup.py install
 ```
+
+This will be complety necessary for the code execution. The original PyParrot library can be found [here](https://github.com/amymcgovern/pyparrot). The changes made to the original library was about sleeping code times, to improve the performance of the control law by sending commands with 30Hz.
 
 #### FFMPEG dependency
 
