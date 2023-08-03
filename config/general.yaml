@@ -1,5 +1,5 @@
 SAVE_IMAGES: 1
-SAVE_WITH_ARUCO: 0
+SAVE_WITH_ARUCO: 1
 
 # (iterations int)  Approx 30 iterations per second (30Hz)
 MAX_ITER: 3600
@@ -7,8 +7,11 @@ MAX_ITER: 3600
 # (seconds float)
 MAX_TIME: 60.0
 
-# (Image have to be inside /data/)
+# (Images have to be inside /data/)
+# First moment of the control law before window
 desiredImage: desired_1.jpg
+# Second moment of the control law after window
+desiredImage2: desired_2.jpg
 
 # 0: No takeoff
 # 1: Takeoff

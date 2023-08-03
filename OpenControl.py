@@ -223,8 +223,8 @@ class UserVision:
                             )
 
                     #################################################################################
-                    while (time.time() - initialTIME < 0.03) and (not self.clicked):
-                        time.sleep(0.001)
+                    while (time.time() - initialTIME < 0.032) and (not self.clicked):
+                        time.sleep(0.0005)
                     print(
                         f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
                     )

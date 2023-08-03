@@ -22,11 +22,9 @@ DRONE = sys.argv[1] if len(sys.argv) > 1 else 1
 
 if (integ := np.loadtxt(f"{PATH}/out/drone_{DRONE}_int.txt")).size in (0, 1):
     integ = None
-
-if integ is None:
-    fig, ax = plt.subplots(3, 1, figsize=(10, 5), sharex=True, num=TITLE)
+    fig, ax = plt.subplots(3, 1, figsize=(10, 7), sharex=True, num=TITLE)
 else:
-    fig, ax = plt.subplots(2, 2, figsize=(10, 5), sharex=True, num=TITLE)
+    fig, ax = plt.subplots(2, 2, figsize=(10, 7), sharex=True, num=TITLE)
 
 fig.suptitle(TITLE, fontsize=14)
 ax = ax.reshape(-1)
@@ -157,58 +155,37 @@ for index_j, j in enumerate(["v", "w"]):
     for index_i, i in enumerate(["kp", "ki"]):
         try:
             lamb = np.loadtxt(f"{PATH}/out/drone_{DRONE}_{j}_{i}.txt")
-            if np.any(lamb != 0):
-                Gains[index_j][index_i] = lamb
-                if len(lamb.shape) == 1:
-                    ax[2].plot(
-                        time[1:],
-                        lamb[1:],
-                        label=j + ": $\lambda_{" + i + "}$",
-                        color=COLORS[index_j * 3 + index_i],
-                    )
-                    ax[2].plot(
-                        [time[1], time[-1]],
-                        [lamb[-1], lamb[-1]],
-                        "--",
-                        color=COLORS[index_j * 3 + index_i],
-                        label=f"y={lamb[-1]:.3f}",
-                        alpha=0.25,
-                    )
-                else:
-                    ax[2].plot(
-                        time[1:],
-                        np.mean(lamb[1:], axis=1),
-                        label=j + ": $\lambda_{" + i + "}$",
-                        color=COLORS[index_j * 3 + index_i],
-                    )
-                    ax[2].plot(
-                        [time[1], time[-1]],
-                        [tempMean := np.mean(lamb[-1]), tempMean],
-                        "--",
-                        color=COLORS[index_j * 3 + index_i],
-                        label=f"y={tempMean:.3f}",
-                        alpha=0.25,
-                    )
-                # else:
-                #     ejes = ["x", "y", "z"]
-                #     for index_ejes in range(3):
-                #         ax[2].plot(
-                #             time[1:],
-                #             lamb[1:, index_ejes],
-                #             label=f"{j}:"
-                #             + "$\lambda$"
-                #             + f"{index_ejes} - {ejes[index_ejes]}",
-                #             # label= fj + ": $\lambda_{" + index_ejes + "}$_" + ejes[index_ejes],
-                #             color=COLORS[index_j * 3 + index_i],
-                #         )
-                #         ax[2].plot(
-                #             [time[1], time[-1]],
-                #             [lamb[-1, index_ejes], lamb[-1, index_ejes]],
-                #             "--",
-                #             color=COLORS[index_j * 3 + index_i],
-                #             label=f"y =aa {lamb[-1, index_ejes]:.3f} {ejes[index_ejes]}",
-                #             alpha=0.25,
-                #         )
+            Gains[index_j][index_i] = lamb
+            if len(lamb.shape) == 1:
+                ax[2].plot(
+                    time[1:],
+                    lamb[1:],
+                    label=j + ": $\lambda_{" + i + "}$",
+                    color=COLORS[index_j * 3 + index_i],
+                )
+                ax[2].plot(
+                    [time[1], time[-1]],
+                    [lamb[-1], lamb[-1]],
+                    "--",
+                    color=COLORS[index_j * 3 + index_i],
+                    label=f"y={lamb[-1]:.3f}",
+                    alpha=0.25,
+                )
+            else:
+                ax[2].plot(
+                    time[1:],
+                    np.mean(lamb[1:], axis=1),
+                    label=j + ": $\lambda_{" + i + "}$",
+                    color=COLORS[index_j * 3 + index_i],
+                )
+                ax[2].plot(
+                    [time[1], time[-1]],
+                    [tempMean := np.mean(lamb[-1]), tempMean],
+                    "--",
+                    color=COLORS[index_j * 3 + index_i],
+                    label=f"y={tempMean:.3f}",
+                    alpha=0.25,
+                )
         except Exception as e:
             pass
 
@@ -220,12 +197,32 @@ ax[2].set_xlabel("Tiempo (s)")
 #########################  FOURTH PLOT INTEGRALS  #########################
 if integ is not None:
     ax[3].title.set_text("Applied Integrals")
-    # ax[3].plot(time[1:], integ[1:, 0], label="$I_x$", alpha=0.7)
-    # ax[3].plot(time[1:], integ[1:, 1], label="$I_y$", alpha=0.7)
-    # ax[3].plot(time[1:], integ[1:, 2], label="$I_z$", alpha=0.7)
-    ax[3].plot(time[1:], integ[1:, 0]*Gains[0][1][1:, 0], label="$I_x * \lambda_{ki}$", alpha=0.7)
-    ax[3].plot(time[1:], integ[1:, 1]*Gains[0][1][1:, 1], label="$I_y * \lambda_{ki}$", alpha=0.7)
-    ax[3].plot(time[1:], integ[1:, 2]*Gains[0][1][1:, 2], label="$I_z * \lambda_{ki}$", alpha=0.7)
+    ax[3].plot(
+        time[1:],
+        integ[1:, 0] * Gains[0][1][1:, 0],
+        label="$I_x * \lambda_{ki}$",
+        alpha=0.7,
+    )
+    ax[3].plot(
+        time[1:],
+        integ[1:, 1] * Gains[0][1][1:, 1],
+        label="$I_y * \lambda_{ki}$",
+        alpha=0.7,
+    )
+    ax[3].plot(
+        time[1:],
+        integ[1:, 2] * Gains[0][1][1:, 2],
+        label="$I_z * \lambda_{ki}$",
+        alpha=0.7,
+    )
+    ax[3].plot(
+        [time[1], time[-1]],
+        [0, 0],
+        "--",
+        c="k",
+        label=f"y=0",
+        alpha=0.25,
+    )
     ax[3].legend(loc="center left", bbox_to_anchor=(1, 0.5))
     ax[3].set_ylabel("Integrales")
 

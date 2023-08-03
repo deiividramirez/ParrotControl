@@ -247,7 +247,7 @@ class BearingOnly:
         self.gains_v_ki = self.gain_v_ki(2 * self.errorVec)
         self.gains_w_kp = self.gain_w_kp(2 * self.errorVec)
 
-        self.integral += np.sign(U) * 0.03
+        self.integral += np.sign(U) * 0.032
         if (time.time() - self.integralTime) > self.yaml["reset_integrator"]:
             self.integralTime = time.time()
             self.integral = np.zeros((3, 1))
@@ -267,8 +267,9 @@ class BearingOnly:
             dtype=np.float32,
         ).reshape((6,))
 
-        self.input[0] *= 2
-
+        # self.input[0] *= 1
+        # self.input[1] *= 1
+        # self.input[2] *= 1
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
         if self.yaml["vels"] == 1:

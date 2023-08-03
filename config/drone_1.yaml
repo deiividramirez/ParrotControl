@@ -1,17 +1,13 @@
 ######### This file contains the configuration for the drone #########
 
 #### Camera intrinsic parameters K as a 9-length vector
-# camera_intrinsic_parameters: [745, 0, 640, 0, 745, 360, 0, 0, 1]
-# camera_intrinsic_parameters: [760, 0, 640, 0, 760, 360, 0, 0, 1]
 camera_intrinsic_parameters: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
 
 #### seguimiento must contain the ArUco IDs that the drone will follow as a list
-# seguimiento: [96, 97]
 seguimiento: [96, 99]
-# seguimiento: [96, 97, 99]
 # seguimiento: [96, 97, 98, 99]
 
-reset_integrator: 2.0 # Reset integrator every (reset_integrator) seconds
+reset_integrator: 60.0 # Reset integrator every (reset_integrator) seconds
 
 #### This gains are used for the control law
 # When l_prime_* > 0, then it must -> init <= max. It means that the gain increase when error approaches to 0
@@ -20,22 +16,22 @@ reset_integrator: 2.0 # Reset integrator every (reset_integrator) seconds
 # gain_v_kp_max: 1.0
 # gain_v_kp_ini: 0.5
 # l_prime_v_kp: 0.1
-gain_v_kp_max: 2
+gain_v_kp_max: 1
 gain_v_kp_ini: 1
 l_prime_v_kp: 6
 
 #### Leaders do not require integral gains
 # Integral translation gains
 gain_v_ki_max: 0.0
-gain_v_ki_ini: 0.02
-l_prime_v_ki: -0.25
+gain_v_ki_ini: 0.008
+l_prime_v_ki: -0.2
 
 # Proportional rotation gains
 gain_w_kp_max: 0.8
 gain_w_kp_ini: 0.2
 l_prime_w_kp: 1.0
 
-#### Saturation values from (-max_vel, max_vel)
+#### Saturation values from (-max_vel, max_vel) given in m/s
 max_vel: 0.3
 
 #### Control law
