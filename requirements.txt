@@ -6,7 +6,7 @@
 # ParrotControl/PyParrot/pyparrot/DroneVisionGUI.py: 29,88
 PyQt5 == 5.15.9
 
-# ParrotControl/src/Aux/Funcs.py: 5
+# ParrotControl/src/Backend/Funcs.py: 5
 PyYAML == 6.0
 
 # ParrotControl/PyParrot/build/lib/pyparrot/networking/bleConnection.py: 1
@@ -21,7 +21,7 @@ colorama == 0.4.6
 # ParrotControl/TEMP/Motive vs Drone.py: 1
 # ParrotControl/makeMP4.py: 9,12,13
 # ParrotControl/plot.py: 2,8
-# ParrotControl/src/Aux/BearingOnly (copia).py: 217,219
+# ParrotControl/src/Backend/BearingOnly (copia).py: 217,219
 matplotlib == 3.7.2
 
 # ParrotControl/PyParrot/docs/conf.py: 23
@@ -33,10 +33,10 @@ mock == 5.0.1
 # ParrotControl/makeMP4.py: 14
 # ParrotControl/plot.py: 9
 # ParrotControl/PyParrot/coursework/ai_class/droneMapGUI.py: 9
-# ParrotControl/src/Aux/BearingOnly (copia).py: 1
-# ParrotControl/src/Aux/BearingOnly.py: 2
-# ParrotControl/src/Aux/Funcs.py: 3
-# ParrotControl/src/Aux/GUO.py: 2
+# ParrotControl/src/Backend/BearingOnly (copia).py: 1
+# ParrotControl/src/Backend/BearingOnly.py: 2
+# ParrotControl/src/Backend/Funcs.py: 3
+# ParrotControl/src/Backend/GUO.py: 2
 numpy == 1.24.2
 
 # ParrotControl/Camera Calibration/calibration.py: 2
@@ -59,10 +59,10 @@ numpy == 1.24.2
 # ParrotControl/PyParrot/pyparrot/DroneVisionGUI.py: 24
 # ParrotControl/PyParrot/pyparrot/Minidrone.py: 27
 # ParrotControl/PyParrot/pyparrot/VisionServer.py: 15
-# ParrotControl/src/Aux/BearingOnly (copia).py: 3
-# ParrotControl/src/Aux/BearingOnly.py: 4
-# ParrotControl/src/Aux/Funcs.py: 2,6
-# ParrotControl/src/Aux/GUO.py: 4
+# ParrotControl/src/Backend/BearingOnly (copia).py: 3
+# ParrotControl/src/Backend/BearingOnly.py: 4
+# ParrotControl/src/Backend/Funcs.py: 2,6
+# ParrotControl/src/Backend/GUO.py: 4
 opencv_contrib_python == 4.7.0.72
 
 # ParrotControl/PyParrot/examples/demoSwingJoystick.py: 1

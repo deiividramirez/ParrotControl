@@ -4,9 +4,9 @@ from pyparrot.Bebop import Bebop
 from pyparrot.Model import Model
 
 # IMPORTS FROM FILES
-import src.Aux.Funcs as Funcs
-import src.Aux.BearingOnly as BO
-import src.Aux.GUO as GUO
+import src.Backend.Funcs as Funcs
+import src.Backend.BearingOnly as BO
+import src.Backend.GUO as GUO
 
 # MAIN LIBRARIES
 import numpy as np

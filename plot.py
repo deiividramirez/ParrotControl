@@ -3,7 +3,7 @@ import matplotlib
 
 matplotlib.use("TkAgg")
 
-from src.Aux.Funcs import loadGeneralYaml, load_yaml
+from src.Backend.Funcs import loadGeneralYaml, load_yaml
 
 import matplotlib.pyplot as plt
 import numpy as np

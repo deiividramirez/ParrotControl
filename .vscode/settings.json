@@ -1,11 +1,10 @@
 {
   "python.analysis.extraPaths": [
-    "./src/Aux",
+    "./src/Backend",
     "./pyparrot"
   ],
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
   },
-  "python.formatting.provider": "none",
   "ros.distro": "noetic"
 }
