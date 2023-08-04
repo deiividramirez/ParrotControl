@@ -4,8 +4,8 @@
 camera_intrinsic_parameters: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
 
 #### seguimiento must contain the ArUco IDs that the drone will follow as a list
-seguimiento: [96, 99]
-# seguimiento: [96, 97, 98, 99]
+# seguimiento: [96, 99]
+seguimiento: [96, 97, 98, 99]
 
 reset_integrator: 5.0 # Reset integrator every (reset_integrator) seconds
 

@@ -49,18 +49,19 @@ class GUO:
         self.yaml = load_yaml(PATH, drone_id)
 
         n = len(self.yaml["seguimiento"])
-        quant = (n - 1) * n // 2
+        quant = lambda n: (n*4 - 1) * n*4 // 2
         if n not in (1, 4):
             raw = input(
-                f"[INFO] Using {n} ArUco markers for control law. That is {quant} distances. Continue? (y/n): "
+                f"[INFO] Using {n} ArUco markers for control law. That is {quant(n)} distances. Continue? (y/n): "
             )
             if raw.lower() != "y":
                 exit()
         elif n == 4:
             print("[INFO] Using the 4 most distant points of the 4 ArUco markers")
+            n = 1
 
         print(
-            f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'} with {quant} distances\n"
+            f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'} with {quant(n)} distances\n"
         )
 
         if self.getDesiredData() < 0:

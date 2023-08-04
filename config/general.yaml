@@ -17,4 +17,4 @@ takeoff: 1
 
 # 0: Leader
 # 1: Follower
-Leader_Follower: 1
+Leader_Follower: 0
