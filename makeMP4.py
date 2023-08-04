@@ -50,7 +50,16 @@ for iter, img in enumerate(imgs):
 videoWriter.release()
 print(f'The video has been saved as out_sim_{num}.mp4')
 
+def quitCV2(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        cv2.destroyAllWindows()
+        exit()
+
+
+
 cap = cv2.VideoCapture(f'{path}/out/out_sim_{num}.mp4')
+cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
+cv2.setMouseCallback("Video", quitCV2)
 while(cap.isOpened()):
     ret, frame = cap.read()
     if ret == True:

@@ -68,9 +68,9 @@ class BearingOnly:
 
         self.storeImage = None
         self.initTime = time.time()
-        self.actualTime = time.time()
-        self.error = np.zeros((2, 3))
-        self.errorVec = np.zeros((1, 3))
+        self.actualTime = 0
+        # self.error = np.zeros((2, 3))
+        self.errorVec = np.zeros((3,))
         self.errorNorm = 0
         self.errorPix = 0
         self.gains_v_kp = np.zeros((3, 1))
@@ -97,6 +97,9 @@ class BearingOnly:
             self.yaml["gain_w_kp_max"],
             self.yaml["l_prime_w_kp"],
         )
+
+        self.firstRun = True 
+        self.smooth = 1
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
         self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
@@ -192,6 +195,11 @@ class BearingOnly:
         )
         self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
 
+        if self.firstRun:
+            self.t0L = self.actualTime
+            self.tfL = self.t0L + 2
+            self.firstRun = False
+
         return 0
 
     @decorator_timer
@@ -243,9 +251,14 @@ class BearingOnly:
             self.actualData.inNormalPlane - self.desiredData.inNormalPlane
         )
 
-        self.gains_v_kp = self.gain_v_kp(2 * self.errorVec)
-        self.gains_v_ki = self.gain_v_ki(2 * self.errorVec)
-        self.gains_w_kp = self.gain_w_kp(2 * self.errorVec)
+        self.actualTime = time.time() - self.initTime
+        if self.actualTime < self.tfL:
+            self.smooth = (1 - np.cos(np.pi * (self.actualTime - self.t0L) / (self.tfL - self.t0L))) / 2
+        
+        # print(f"Smooth: {self.smooth:.2f} t0L: {self.t0L:.2f} tfL: {self.tfL:.2f} t: {self.actualTime:.2f}")
+        self.gains_v_kp = self.smooth * self.gain_v_kp(2 * self.errorVec)
+        self.gains_v_ki = self.smooth * self.gain_v_ki(2 * self.errorVec)
+        self.gains_w_kp = self.smooth * self.gain_w_kp(2 * self.errorVec)
 
         self.integral += np.sign(U) * 0.032
         if (time.time() - self.integralTime) > self.yaml["reset_integrator"]:
@@ -267,9 +280,10 @@ class BearingOnly:
             dtype=np.float32,
         ).reshape((6,))
 
-        # self.input[0] *= 1
-        # self.input[1] *= 1
-        # self.input[2] *= 1
+        if self.yaml["control"] == 1:
+            self.input[0] *= 2
+            # self.input[1] *= 1
+            # self.input[2] *= 1
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
         if self.yaml["vels"] == 1:
@@ -278,6 +292,7 @@ class BearingOnly:
             self.input = np.clip(self.input, -60, 60)
             self.input[2] = np.clip(self.input[2], -40, 40)
             print("Input  after %: ", self.input)
+
 
         self.save()
         return self.input
@@ -325,8 +340,9 @@ class BearingOnly:
                 f"Lambda_v_ki -> x: {self.gains_v_ki[1,0]:.2f}, y: {self.gains_v_ki[2,0]:.2f}, z: {self.gains_v_ki[0,0]:.2f}\n",
                 f"Lambda_w_kp -> x: {self.gains_w_kp[1,0]:.2f}, y: {self.gains_w_kp[2,0]:.2f}, z: {self.gains_w_kp[0,0]:.2f}\n",
             )
-
-        except Exception as e:
+        
+        # print error in which line and why
+        except ValueError as e:
             print("[ERROR] Error writing in file: ", e)
 
     def middlePoint(self, points: np.ndarray) -> np.ndarray:
@@ -365,13 +381,15 @@ if __name__ == "__main__":
     img = cv2.imread(f"{PATH}/data/desired_1.jpg")
     control = BearingOnly(img, 1)
 
+    time.sleep(.1)
     print(
         control.getVels(
             cv2.imread(f"{PATH}/data/desired_1.jpg"),
             get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
         )
     )
-
+    
+    time.sleep(2)
     print(
         control.getVels(
             cv2.imread(f"{PATH}/data/desired_2.jpg"),

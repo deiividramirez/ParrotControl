@@ -19,6 +19,7 @@ DRONE_YAML = load_yaml(PATH)
 TITLE = f"Summary {'leader' if GEN_YAML['Leader_Follower'] == 0 else 'follower'} drone with control ({CONTROLS[GEN_YAML['Leader_Follower']][DRONE_YAML['control']-1]})"
 DRONE = sys.argv[1] if len(sys.argv) > 1 else 1
 
+plt.rcParams["figure.autolayout"] = True
 
 if (integ := np.loadtxt(f"{PATH}/out/drone_{DRONE}_int.txt")).size in (0, 1):
     integ = None
@@ -227,6 +228,7 @@ if integ is not None:
     ax[3].set_ylabel("Integrales")
 
 #########################  TIGHT LAYOUT, SAVING AND SHOWING  #########################
+# plt.get_current_fig_manager().full_screen_toggle()
 fig.tight_layout()
 fig.savefig(f"{PATH}/out/out_velocities.png", bbox_inches="tight", pad_inches=0.1)
 

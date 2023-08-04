@@ -7,7 +7,7 @@ camera_intrinsic_parameters: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
 seguimiento: [96, 99]
 # seguimiento: [96, 97, 98, 99]
 
-reset_integrator: 60.0 # Reset integrator every (reset_integrator) seconds
+reset_integrator: 5.0 # Reset integrator every (reset_integrator) seconds
 
 #### This gains are used for the control law
 # When l_prime_* > 0, then it must -> init <= max. It means that the gain increase when error approaches to 0
@@ -16,14 +16,14 @@ reset_integrator: 60.0 # Reset integrator every (reset_integrator) seconds
 # gain_v_kp_max: 1.0
 # gain_v_kp_ini: 0.5
 # l_prime_v_kp: 0.1
-gain_v_kp_max: 1
+gain_v_kp_max: 2
 gain_v_kp_ini: 1
 l_prime_v_kp: 6
 
 #### Leaders do not require integral gains
 # Integral translation gains
 gain_v_ki_max: 0.0
-gain_v_ki_ini: 0.008
+gain_v_ki_ini: 0.005
 l_prime_v_ki: -0.2
 
 # Proportional rotation gains
@@ -38,7 +38,7 @@ max_vel: 0.3
 # -> Leader        |   -> Follower
 #  1: 1/dist,     |     1: -P_gij * gij*
 #  2: dist       |      2: gij - gij*
-control: 2
+control: 1
 
 #### Send velocities
 # 0: move_relative

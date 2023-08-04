@@ -90,9 +90,7 @@ class UserVision:
 
         self.yaml = Funcs.loadGeneralYaml(ACTUALPATH)
 
-        self.actualVision = cv2.VideoCapture(
-            f"{ACTUALPATH}/data/bebop.sdp"
-        )
+        self.actualVision = cv2.VideoCapture(f"{ACTUALPATH}/data/bebop.sdp")
 
         self.getImagesThread = threading.Thread(target=self.getImages)
         self.saveImagesThread = threading.Thread(target=self.saveImages)
@@ -223,7 +221,7 @@ class UserVision:
                             )
 
                     #################################################################################
-                    while (time.time() - initialTIME < 0.032) and (not self.clicked):
+                    while (time.time() - initialTIME < 0.0325) and (not self.clicked):
                         time.sleep(0.0005)
                     print(
                         f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
