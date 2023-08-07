@@ -98,7 +98,7 @@ class BearingOnly:
             self.yaml["l_prime_w_kp"],
         )
 
-        self.firstRun = True 
+        self.firstRun = True
         self.smooth = 1
 
         self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
@@ -128,11 +128,18 @@ class BearingOnly:
         self.file_errorPix.write("0.0\n")
 
     def __name__(self) -> str:
-        return (
-            "BearingOnly (-P_gij * gij*)"
-            if self.yaml["control"] == 1
-            else "BearingOnly (gij - gij*)"
-        )
+        if self.yaml["control"] == 1:
+            return "BearingOnly (-P_gij * gij*)"
+        elif self.yaml["control"] == 2:
+            return "BearingOnly (gij - gij*)"
+        elif self.yaml["control"] == 3:
+            return "BearingOnly (-P_gij * gij*) + (gij - gij*)"
+        elif self.yaml["control"] == 4:
+            return "BearingOnly (-P_gij * gij*) with rotation"
+        elif self.yaml["control"] == 5:
+            return "BearingOnly (gij - gij*) with rotation"
+        elif self.yaml["control"] == 6:
+            return "BearingOnly (-P_gij * gij*) + (gij - gij*) with rotation"
 
     def getDesiredData(self) -> int:
         """
@@ -198,6 +205,8 @@ class BearingOnly:
         if self.firstRun:
             self.t0L = self.actualTime
             self.tfL = self.t0L + 2
+
+            self.lastQi = np.zeros((len(self.yaml["seguimiento"]), 3, 3))
             self.firstRun = False
 
         return 0
@@ -221,7 +230,7 @@ class BearingOnly:
         #     return self.input
         # else:
         #     self.storeImage = actualImage
-        # self.storeImage = actualImage
+        self.actualImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) < 0:
             print("[ERROR] Some ArUco's were not found")
@@ -229,19 +238,70 @@ class BearingOnly:
             self.save()
             return self.input
 
+        if self.homography() < 0:
+            print("[ERROR] Homographies could not be calculated")
+            self.input = np.zeros((6,))
+            self.save()
+            return self.input
+
         [
-            print(f"Desired -> {i}", f"Actual  -> {j}", "\n", sep="\n")
+            print(
+                f"Desired -> {i}",
+                f"Actual  -> {j}",
+                "\n",
+                sep="\n",
+                end="----------------------------------------\n",
+            )
             for i, j in zip(self.desiredData.bearings, self.actualData.bearings)
         ]
 
         U = np.zeros((3, 1))
+        Uw = np.zeros((3, 3))
         for i in range(self.actualData.bearings.shape[0]):
-            temp = (
-                (-ortoProj(self.actualData.bearings[i]) @ self.desiredData.bearings[i])
-                if self.yaml["control"] == 1
-                else (self.actualData.bearings[i] - self.desiredData.bearings[i])
-            )
+            if self.yaml["control"] == 1:
+                temp = (
+                    -ortoProj(self.actualData.bearings[i])
+                    @ self.desiredData.bearings[i]
+                )
+            elif self.yaml["control"] == 2:
+                temp = self.actualData.bearings[i] - self.desiredData.bearings[i]
+            elif self.yaml["control"] == 3:
+                temp = (
+                    -ortoProj(self.actualData.bearings[i])
+                    @ self.desiredData.bearings[i]
+                    + self.actualData.bearings[i]
+                    - self.desiredData.bearings[i]
+                )
+            elif self.yaml["control"] == 4:
+                temp = -ortoProj(self.actualData.bearings[i]) @ (
+                    (np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i]
+                )
+            elif self.yaml["control"] == 5:
+                temp = self.actualData.bearings[i] - (
+                    (np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i]
+                )
+            elif self.yaml["control"] == 6:
+                temp = (
+                    -ortoProj(self.actualData.bearings[i])
+                    @ ((np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i])
+                    + self.actualData.bearings[i]
+                    - ((np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i])
+                )
             U += temp.reshape(-1, 1)
+            if self.yaml["control"] in (4, 5, 6):
+                Uw -= self.Qi[i].T - self.Qi[i]
+
+        # if self.firstRun:
+        #     self.lastQi = self.Qi
+        #     self.firstRun = False
+        # else:
+        #     if np.linalg.norm(self.Qi - self.lastQi) > 0.1:
+        #         print(">>>>>", np.linalg.norm(self.Qi - self.lastQi))
+        #         print("Cambia")
+        #         self.Qi = self.lastQi
+
+        print(">>>>>", np.linalg.norm(self.Qi - self.lastQi))
+        self.lastQi = self.Qi
 
         # self.error = self.actualData.bearings - self.desiredData.bearings
         # self.errorVec = np.linalg.norm(self.error, axis=0)
@@ -252,9 +312,9 @@ class BearingOnly:
         )
 
         self.actualTime = time.time() - self.initTime
-        if self.actualTime < self.tfL:
-            self.smooth = (1 - np.cos(np.pi * (self.actualTime - self.t0L) / (self.tfL - self.t0L))) / 2
-        
+        # if self.actualTime < self.tfL:
+        #     self.smooth = (1 - np.cos(np.pi * (self.actualTime - self.t0L) / (self.tfL - self.t0L))) / 2
+
         # print(f"Smooth: {self.smooth:.2f} t0L: {self.t0L:.2f} tfL: {self.tfL:.2f} t: {self.actualTime:.2f}")
         self.gains_v_kp = self.smooth * self.gain_v_kp(2 * self.errorVec)
         self.gains_v_ki = self.smooth * self.gain_v_ki(2 * self.errorVec)
@@ -268,11 +328,12 @@ class BearingOnly:
         self.vels = np.concatenate(
             (
                 (self.gains_v_kp * U) + (self.gains_v_ki * self.integral),
-                self.gains_w_kp * np.zeros((3, 1)),
+                self.gains_w_kp * decomposeSkewSymmetricMatrix(Uw),
             ),
             axis=0,
             dtype=np.float32,
         )
+        print("v:", self.vels.T)
 
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
@@ -293,9 +354,125 @@ class BearingOnly:
             self.input[2] = np.clip(self.input[2], -40, 40)
             print("Input  after %: ", self.input)
 
-
         self.save()
         return self.input
+
+    def homography(self) -> int:
+        self.Qi = []
+
+        for index, seg in enumerate(self.yaml["seguimiento"]):
+            H = cv2.findHomography(
+                self.actualData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
+                self.desiredData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
+            )[0]
+
+            if H is None:
+                print("[ERROR] Homography could not be calculated")
+                return -1
+
+            # H /= np.linalg.norm(H[:, 0])
+            H /= H[2, 2]
+
+            num, Rs, Ts, Ns = cv2.decomposeHomographyMat(
+                H, self.yaml["camera_intrinsic_parameters"]
+            )
+
+            tries = []
+            for i in range(num):
+                if Ns[i][2] > 0:
+                    tries.append([Rs[i], Ts[i], Ns[i]])
+            if len(tries) == 0:
+                return -1
+            elif len(tries) == 1:
+                self.Qi.append(tries[0][0])
+            else:
+                if tries[0][2][2] > tries[1][2][2]:
+                    self.Qi.append(tries[0][0].T)
+                else:
+                    self.Qi.append(tries[1][0].T)
+
+            # U, S, Vt = np.linalg.svd(H)
+            # s1 = S[0] / S[1]
+            # s3 = S[2] / S[1]
+
+            # ab = normalize([np.sqrt(1 - s3**2), np.sqrt(s1**2 - 1)])
+            # cd = normalize([1 + s1 * s3, np.sqrt(1 - s3**2) * np.sqrt(s1**2 - 1)])
+            # ef = normalize([-ab[1] / s1, -ab[0] / s3])
+
+            # v1 = Vt[0]
+            # v3 = Vt[2]
+
+            # n1 = ab[1] * v1 - ab[0] * v3
+            # n2 = ab[1] * v1 + ab[0] * v3
+
+            # temp1 = np.array([[cd[0], 0, cd[1]], [0, 1, 0], [-cd[1], 0, cd[0]]])
+            # temp2 = np.array([[cd[0], 0, -cd[1]], [0, 1, 0], [cd[1], 0, cd[0]]])
+
+            # R1 = U @ temp1 @ Vt
+            # R2 = U @ temp2 @ Vt
+
+            # t1 = ef[0] * v1 + ef[1] * v3
+            # t2 = ef[0] * v1 - ef[1] * v3
+
+            # if n1[2] < 0:
+            #     t1 = -t1
+            #     n1 = -n1
+
+            # if n2[2] < 0:
+            #     t2 = -t2
+            #     n2 = -n2
+
+            # if n1[2] > n2[2]:
+            #     self.Qi.append(R1)
+            # else:
+            #     self.Qi.append(R2)
+
+            # img_dst = cv2.warpPerspective(
+            #     # self.actualImage,
+            #     self.img_desired,
+            #     H,
+            #     self.actualImage.shape[:2][::-1],
+            # )
+
+            # for i in range(4):
+            #     cv2.circle(
+            #         img_dst,
+            #         tuple(self.desiredData.feature[4 * index + i]),
+            #         5,
+            #         (0, 255, 0),
+            #         -1,
+            #     )
+            #     cv2.circle(
+            #         img_dst,
+            #         tuple(self.actualData.feature[4 * index + i]),
+            #         5,
+            #         (0, 0, 255),
+            #         -1,
+            #     )
+            #     cv2.circle(
+            #         self.img_desired,
+            #         tuple(self.desiredData.feature[4 * index + i]),
+            #         5,
+            #         (0, 255, 0),
+            #         -1,
+            #     )
+            #     cv2.circle(
+            #         self.img_desired,
+            #         tuple(self.actualData.feature[4 * index + i]),
+            #         5,
+            #         (0, 0, 255),
+            #         -1,
+            #     )
+
+            # # concatenate the images
+            # img_concat = np.concatenate((self.img_desired, img_dst), axis=1)
+            # cv2.namedWindow("Homography", cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow("Homography", 800, 400)
+            # cv2.imshow("Homography", img_concat)
+            # cv2.waitKey(0)
+        # exit()
+        self.Qi = np.array(self.Qi, dtype=np.float32)
+        return 0
 
     def save(self):
         # print("[INFO] Saving data")
@@ -309,19 +486,29 @@ class BearingOnly:
             self.file_errorPix.write(f"{self.errorPix}\n")
 
             # (self.rotAndTrans @ self.errorVec).tofile(self.file_error, sep="\t", format="%s")
-            (self.rotAndTrans @ self.errorVec).tofile(self.file_error, sep="\t", format="%s")
+            (self.rotAndTrans @ self.errorVec).tofile(
+                self.file_error, sep="\t", format="%s"
+            )
             self.file_error.write("\n")
 
-            (self.rotAndTrans @ self.gains_v_kp).tofile(self.file_v_kp, sep="\t", format="%s")
+            (self.rotAndTrans @ self.gains_v_kp).tofile(
+                self.file_v_kp, sep="\t", format="%s"
+            )
             self.file_v_kp.write("\n")
 
-            (self.rotAndTrans @ self.gains_v_ki).tofile(self.file_v_ki, sep="\t", format="%s")
+            (self.rotAndTrans @ self.gains_v_ki).tofile(
+                self.file_v_ki, sep="\t", format="%s"
+            )
             self.file_v_ki.write("\n")
 
-            (self.rotAndTrans @ self.gains_w_kp).tofile(self.file_w_kp, sep="\t", format="%s")
+            (self.rotAndTrans @ self.gains_w_kp).tofile(
+                self.file_w_kp, sep="\t", format="%s"
+            )
             self.file_w_kp.write("\n")
 
-            (self.rotAndTrans @ self.integral).tofile(self.file_int, sep="\t", format="%s")
+            (self.rotAndTrans @ self.integral).tofile(
+                self.file_int, sep="\t", format="%s"
+            )
             self.file_int.write("\n")
 
             # print(f"x: {self.input[0]}",
@@ -340,7 +527,7 @@ class BearingOnly:
                 f"Lambda_v_ki -> x: {self.gains_v_ki[1,0]:.2f}, y: {self.gains_v_ki[2,0]:.2f}, z: {self.gains_v_ki[0,0]:.2f}\n",
                 f"Lambda_w_kp -> x: {self.gains_w_kp[1,0]:.2f}, y: {self.gains_w_kp[2,0]:.2f}, z: {self.gains_w_kp[0,0]:.2f}\n",
             )
-        
+
         # print error in which line and why
         except ValueError as e:
             print("[ERROR] Error writing in file: ", e)
@@ -381,15 +568,13 @@ if __name__ == "__main__":
     img = cv2.imread(f"{PATH}/data/desired_1.jpg")
     control = BearingOnly(img, 1)
 
-    time.sleep(.1)
-    print(
-        control.getVels(
-            cv2.imread(f"{PATH}/data/desired_1.jpg"),
-            get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
-        )
-    )
-    
-    time.sleep(2)
+    # print(
+    #     control.getVels(
+    #         cv2.imread(f"{PATH}/data/desired_1.jpg"),
+    #         get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
+    #     )
+    # )
+
     print(
         control.getVels(
             cv2.imread(f"{PATH}/data/desired_2.jpg"),

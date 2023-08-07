@@ -13,8 +13,8 @@ desiredImage2: desired_2.jpg
 
 # 0: No takeoff
 # 1: Takeoff
-takeoff: 1
+takeoff: 0
 
 # 0: Leader
 # 1: Follower
-Leader_Follower: 0
+Leader_Follower: 1

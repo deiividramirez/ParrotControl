@@ -296,6 +296,36 @@ def ortoProj(x: np.ndarray) -> np.ndarray:
     return (np.eye(3) - (temp @ temp.T)) / np.linalg.norm(temp) ** 2
 
 
+def decomposeSkewSymmetricMatrix(A: np.ndarray) -> np.ndarray:
+    """
+    Decompose a skew symmetric matrix in a vector
+
+    @ Parameters
+        A: np.ndarray -> Skew symmetric matrix
+
+    @ Returns
+        np.ndarray -> Vector
+    """
+    if np.linalg.norm(A + A.T) > 1e-3:
+        raise ValueError(
+            f"The matrix is not skew symmetric >> \nA: {A}\nA.T: {A.T}\n-A.T + A: {A + A.T}"
+        )
+    return np.array([A[2, 1], A[0, 2], A[1, 0]]).reshape(-1, 1)
+
+
+def skewSymmetricMatrix(x: np.ndarray) -> np.ndarray:
+    """
+    Calculate the skew symmetric matrix of a vector
+
+    @ Parameters
+        x: np.ndarray -> Vector
+
+    @ Returns
+        np.ndarray -> Skew symmetric matrix
+    """
+    return np.array([[0, -x[2], x[1]], [x[2], 0, -x[0]], [-x[1], x[0], 0]])
+
+
 def decorator_timer(function):
     """
     Decorator to calculate the time of a function

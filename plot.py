@@ -10,9 +10,18 @@ import numpy as np
 import pathlib
 import sys
 
-
 PATH = pathlib.Path(__file__).parent.absolute()
-CONTROLS = [["1/dij", "dij"], ["-P_gij * gij*", "gij-gij*"]]
+CONTROLS = [
+    ["1/dij", "dij"],
+    [
+        "-P_gij * gij*",
+        "gij-gij*",
+        "(-P_gij * gij*) + (gij - gij*)",
+        "-P_gij * gij* with rotation",
+        "gij - gij* with rotation",
+        "(-P_gij * gij*) + (gij - gij*) with rotation",
+    ],
+]
 COLORS = ["blue", "orange", "green", "red", "purple", "brown", "pink", "gray", "olive"]
 GEN_YAML = loadGeneralYaml(PATH)
 DRONE_YAML = load_yaml(PATH)
