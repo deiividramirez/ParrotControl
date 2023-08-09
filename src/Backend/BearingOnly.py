@@ -313,9 +313,8 @@ class BearingOnly:
         self.gains_v_ki = self.smooth * self.gain_v_ki(2 * self.errorVec)
         self.gains_w_kp = self.smooth * self.gain_w_kp(2 * self.errorVec)
 
-        self.integral += np.sign(U) * 0.0325
-        if (time.time() - self.integralTime) > self.yaml["reset_integrator"]:
-            self.integralTime = time.time()
+        self.integral += np.sign(U) * 0.03245
+        if self.errorNorm < self.yaml["reset_integrator"]:
             self.integral = np.zeros((3, 1))
 
         self.vels = np.concatenate(

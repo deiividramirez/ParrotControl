@@ -17,7 +17,11 @@ else:
 
 class GUO:
     def __init__(
-        self, img_desired: np.ndarray, drone_id: int, RT: np.ndarray = np.eye(3, 3)
+        self,
+        img_desired: np.ndarray,
+        img_desired2: np.ndarray,
+        drone_id: int,
+        RT: np.ndarray = np.eye(3, 3),
     ) -> None:
         """
         __init__ function for the GUO class
@@ -33,7 +37,8 @@ class GUO:
         translational and rotational components of the control law.
 
         @Params:
-            img_desired: np.ndarray -> A (n,3) matrix with the desired image
+            img_desired: np.ndarray -> A (m, n, 3) matrix with the desired image
+            img_desired: np.ndarray -> A (m, n, 3) matrix with the desired image
             drone_id: int -> A flag to know which drone is going to be used
             RT: np.ndarray -> A (3,3) matrix with the rotation and translation
                 for changing the reference frame from the camera to the drone
@@ -43,13 +48,14 @@ class GUO:
 
         """
         self.img_desired = img_desired
+        self.img_desired2 = img_desired2
         self.img_desired_gray = cv2.cvtColor(img_desired, cv2.COLOR_BGR2GRAY)
         self.drone_id = drone_id
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
         n = len(self.yaml["seguimiento"])
-        quant = lambda n: (n*4 - 1) * n*4 // 2
+        quant = lambda n: (n * 4 - 1) * n * 4 // 2
         if n not in (1, 4):
             raw = input(
                 f"[INFO] Using {n} ArUco markers for control law. That is {quant(n)} distances. Continue? (y/n): "

@@ -205,8 +205,8 @@ class UserVision:
                                 self.vels[0],
                                 self.vels[1],
                                 self.vels[2],
-                                # 0, 
                                 self.vels[5],
+                                # 0,
                             )
                         elif self.control.yaml["vels"] == 1:
                             print(
@@ -378,7 +378,12 @@ if __name__ == "__main__":
     YALM = Funcs.loadGeneralYaml(ACTUALPATH)
 
     if YALM["Leader_Follower"] == 0:
-        control = GUO.GUO(cv2.imread(f"{ACTUALPATH}/data/{YALM['desiredImage']}"), 1, R)
+        control = GUO.GUO(
+            cv2.imread(f"{ACTUALPATH}/data/{YALM['desiredImage']}"),
+            cv2.imread(f"{ACTUALPATH}/data/{YALM['desiredImage2']}"),
+            1,
+            R,
+        )
     elif YALM["Leader_Follower"] == 1:
         control = BO.BearingOnly(
             cv2.imread(f"{ACTUALPATH}/data/{YALM['desiredImage']}"), 1, R
