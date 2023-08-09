@@ -326,6 +326,66 @@ def skewSymmetricMatrix(x: np.ndarray) -> np.ndarray:
     return np.array([[0, -x[2], x[1]], [x[2], 0, -x[0]], [-x[1], x[0], 0]])
 
 
+def e2R(roll: float, pitch: float, yaw: float) -> np.ndarray:
+    """
+    Calculate the rotation matrix from euler angles
+
+    @ Parameters
+        roll: float -> Roll angle
+        pitch: float -> Pitch angle
+        yaw: float -> Yaw angle
+
+    @ Returns
+        np.ndarray -> Rotation matrix
+    """
+    return (
+        np.array(
+            [
+                [
+                    np.cos(yaw) * np.cos(pitch),
+                    np.cos(yaw) * np.sin(pitch) * np.sin(roll)
+                    - np.sin(yaw) * np.cos(roll),
+                    np.cos(yaw) * np.sin(pitch) * np.cos(roll)
+                    + np.sin(yaw) * np.sin(roll),
+                ],
+                [
+                    np.sin(yaw) * np.cos(pitch),
+                    np.sin(yaw) * np.sin(pitch) * np.sin(roll)
+                    + np.cos(yaw) * np.cos(roll),
+                    np.sin(yaw) * np.sin(pitch) * np.cos(roll)
+                    - np.cos(yaw) * np.sin(roll),
+                ],
+                [
+                    -np.sin(pitch),
+                    np.cos(pitch) * np.sin(roll),
+                    np.cos(pitch) * np.cos(roll),
+                ],
+            ]
+        )
+        .astype(np.float32)
+        .reshape(3, 3)
+    )
+
+
+def r2E(R: np.ndarray) -> np.ndarray:
+    """
+    Calculate the euler angles from a rotation matrix
+
+    @ Parameters
+        R: np.ndarray -> Rotation matrix
+
+    @ Returns
+        np.ndarray -> Euler angles
+    """
+    return np.array(
+        [
+            np.arctan2(R[2, 1], R[2, 2]),
+            np.arctan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)),
+            np.arctan2(R[1, 0], R[0, 0]),
+        ]
+    )
+
+
 def decorator_timer(function):
     """
     Decorator to calculate the time of a function

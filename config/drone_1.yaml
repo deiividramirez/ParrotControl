@@ -16,8 +16,8 @@ reset_integrator: 5.0 # Reset integrator every (reset_integrator) seconds
 # gain_v_kp_max: 1.0
 # gain_v_kp_ini: 0.5
 # l_prime_v_kp: 0.1
-gain_v_kp_max: 2
-gain_v_kp_ini: 1
+gain_v_kp_max: 1
+gain_v_kp_ini: .5
 l_prime_v_kp: 6
 
 #### Leaders do not require integral gains
@@ -27,8 +27,8 @@ gain_v_ki_ini: 0.005
 l_prime_v_ki: -0.2
 
 # Proportional rotation gains
-gain_w_kp_max: 1
-gain_w_kp_ini: 1
+gain_w_kp_max: 0.08
+gain_w_kp_ini: 0.08
 l_prime_w_kp: 1.0
 
 #### Saturation values from (-max_vel, max_vel) given in m/s
@@ -42,7 +42,7 @@ max_vel: 0.3
 #  ------------- |      4: -P_gij * gij* with rotation
 #  ------------- |      5: gij - gij* with rotation
 #  ------------- |      6: (-P_gij * gij*) + (gij - gij*) with rotation
-control: 3
+control: 5
 
 #### Send velocities
 # 0: move_relative

@@ -205,7 +205,8 @@ class UserVision:
                                 self.vels[0],
                                 self.vels[1],
                                 self.vels[2],
-                                0,  # self.vels[5]
+                                # 0, 
+                                self.vels[5],
                             )
                         elif self.control.yaml["vels"] == 1:
                             print(

@@ -49,7 +49,7 @@ class BearingOnly:
         self.yaml = load_yaml(PATH, drone_id)
 
         n = len(self.yaml["seguimiento"])
-        if n == 1:
+        if n <= 1:
             print("[ERROR] Only one ArUco is not allowed")
             exit()
         elif n > 2:
@@ -76,6 +76,7 @@ class BearingOnly:
         self.gains_v_kp = np.zeros((3, 1))
         self.gains_v_ki = np.zeros((3, 1))
         self.gains_w_kp = np.zeros((3, 1))
+        self.vels = np.zeros((6, 1))
 
         self.integral = np.zeros((3, 1))
         self.integralTime = time.time()
@@ -126,6 +127,8 @@ class BearingOnly:
         self.errorVec.tofile(self.file_error, sep=" ", format="%s")
         self.file_error.write("\n")
         self.file_errorPix.write("0.0\n")
+
+        self.Qis = []
 
     def __name__(self) -> str:
         if self.yaml["control"] == 1:
@@ -238,11 +241,13 @@ class BearingOnly:
             self.save()
             return self.input
 
-        if self.homography() < 0:
-            print("[ERROR] Homographies could not be calculated")
-            self.input = np.zeros((6,))
-            self.save()
-            return self.input
+        if self.yaml["control"] in (4, 5, 6):
+            print("[INFO] Calculating homographies [Qi]")
+            if self.homography() < 0:
+                print("[ERROR] Homographies could not be calculated")
+                self.input = np.zeros((6,))
+                self.save()
+                return self.input
 
         [
             print(
@@ -274,37 +279,24 @@ class BearingOnly:
                 )
             elif self.yaml["control"] == 4:
                 temp = -ortoProj(self.actualData.bearings[i]) @ (
-                    (np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i]
+                    (np.eye(3) + self.Qi[i].T) / 2 @ self.desiredData.bearings[i]
                 )
             elif self.yaml["control"] == 5:
                 temp = self.actualData.bearings[i] - (
-                    (np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i]
+                    (np.eye(3) + self.Qi[i].T) / 2 @ self.desiredData.bearings[i]
                 )
             elif self.yaml["control"] == 6:
                 temp = (
                     -ortoProj(self.actualData.bearings[i])
-                    @ ((np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i])
+                    @ ((np.eye(3) + self.Qi[i].T) / 2 @ self.desiredData.bearings[i])
                     + self.actualData.bearings[i]
-                    - ((np.eye(3) + self.Qi[i]) / 2 @ self.desiredData.bearings[i])
+                    - ((np.eye(3) + self.Qi[i].T) / 2 @ self.desiredData.bearings[i])
                 )
+
             U += temp.reshape(-1, 1)
             if self.yaml["control"] in (4, 5, 6):
-                Uw -= self.Qi[i].T - self.Qi[i]
+                Uw -= self.Qi[i] - self.Qi[i].T
 
-        # if self.firstRun:
-        #     self.lastQi = self.Qi
-        #     self.firstRun = False
-        # else:
-        #     if np.linalg.norm(self.Qi - self.lastQi) > 0.1:
-        #         print(">>>>>", np.linalg.norm(self.Qi - self.lastQi))
-        #         print("Cambia")
-        #         self.Qi = self.lastQi
-
-        print(">>>>>", np.linalg.norm(self.Qi - self.lastQi))
-        self.lastQi = self.Qi
-
-        # self.error = self.actualData.bearings - self.desiredData.bearings
-        # self.errorVec = np.linalg.norm(self.error, axis=0)
         self.errorVec = np.linalg.norm(U, axis=1).T
         self.errorNorm = np.linalg.norm(self.errorVec)
         self.errorPix = np.linalg.norm(
@@ -312,15 +304,16 @@ class BearingOnly:
         )
 
         self.actualTime = time.time() - self.initTime
-        # if self.actualTime < self.tfL:
-        #     self.smooth = (1 - np.cos(np.pi * (self.actualTime - self.t0L) / (self.tfL - self.t0L))) / 2
+        if self.actualTime < self.tfL:
+            self.smooth = (
+                1 - np.cos(np.pi * (self.actualTime - self.t0L) / (self.tfL - self.t0L))
+            ) / 2
 
-        # print(f"Smooth: {self.smooth:.2f} t0L: {self.t0L:.2f} tfL: {self.tfL:.2f} t: {self.actualTime:.2f}")
         self.gains_v_kp = self.smooth * self.gain_v_kp(2 * self.errorVec)
         self.gains_v_ki = self.smooth * self.gain_v_ki(2 * self.errorVec)
         self.gains_w_kp = self.smooth * self.gain_w_kp(2 * self.errorVec)
 
-        self.integral += np.sign(U) * 0.032
+        self.integral += np.sign(U) * 0.0325
         if (time.time() - self.integralTime) > self.yaml["reset_integrator"]:
             self.integralTime = time.time()
             self.integral = np.zeros((3, 1))
@@ -333,7 +326,6 @@ class BearingOnly:
             axis=0,
             dtype=np.float32,
         )
-        print("v:", self.vels.T)
 
         self.input = np.concatenate(
             (self.rotAndTrans @ self.vels[:3], self.rotAndTrans @ self.vels[3:]),
@@ -362,16 +354,36 @@ class BearingOnly:
 
         for index, seg in enumerate(self.yaml["seguimiento"]):
             H = cv2.findHomography(
-                self.actualData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
                 self.desiredData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
+                self.actualData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
             )[0]
 
             if H is None:
                 print("[ERROR] Homography could not be calculated")
                 return -1
 
+            # res = (
+            #     H
+            #     @ np.hstack(
+            #         (
+            #             self.desiredData.feature[4 * index : 4 * index + 4],
+            #             np.ones((4, 1)),
+            #         )
+            #     ).T
+            # )
+            # res /= res[2]
+            # res = np.array(res, dtype=np.int32)
+
+            # [
+            #     print(f"{np.linalg.norm(i-j)}")
+            #     for i, j in zip(
+            #         res[0:2, :].T,
+            #         self.actualData.feature[4 * index : 4 * index + 4],
+            #     )
+            # ]
+
             # H /= np.linalg.norm(H[:, 0])
-            H /= H[2, 2]
+            H /= H[1, 1]
 
             num, Rs, Ts, Ns = cv2.decomposeHomographyMat(
                 H, self.yaml["camera_intrinsic_parameters"]
@@ -380,97 +392,18 @@ class BearingOnly:
             tries = []
             for i in range(num):
                 if Ns[i][2] > 0:
-                    tries.append([Rs[i], Ts[i], Ns[i]])
+                    tries.append([Rs[i].T, Ts[i], Ns[i]])
+
             if len(tries) == 0:
                 return -1
             elif len(tries) == 1:
                 self.Qi.append(tries[0][0])
             else:
                 if tries[0][2][2] > tries[1][2][2]:
-                    self.Qi.append(tries[0][0].T)
+                    self.Qi.append(tries[1][0])
                 else:
-                    self.Qi.append(tries[1][0].T)
+                    self.Qi.append(tries[0][0])
 
-            # U, S, Vt = np.linalg.svd(H)
-            # s1 = S[0] / S[1]
-            # s3 = S[2] / S[1]
-
-            # ab = normalize([np.sqrt(1 - s3**2), np.sqrt(s1**2 - 1)])
-            # cd = normalize([1 + s1 * s3, np.sqrt(1 - s3**2) * np.sqrt(s1**2 - 1)])
-            # ef = normalize([-ab[1] / s1, -ab[0] / s3])
-
-            # v1 = Vt[0]
-            # v3 = Vt[2]
-
-            # n1 = ab[1] * v1 - ab[0] * v3
-            # n2 = ab[1] * v1 + ab[0] * v3
-
-            # temp1 = np.array([[cd[0], 0, cd[1]], [0, 1, 0], [-cd[1], 0, cd[0]]])
-            # temp2 = np.array([[cd[0], 0, -cd[1]], [0, 1, 0], [cd[1], 0, cd[0]]])
-
-            # R1 = U @ temp1 @ Vt
-            # R2 = U @ temp2 @ Vt
-
-            # t1 = ef[0] * v1 + ef[1] * v3
-            # t2 = ef[0] * v1 - ef[1] * v3
-
-            # if n1[2] < 0:
-            #     t1 = -t1
-            #     n1 = -n1
-
-            # if n2[2] < 0:
-            #     t2 = -t2
-            #     n2 = -n2
-
-            # if n1[2] > n2[2]:
-            #     self.Qi.append(R1)
-            # else:
-            #     self.Qi.append(R2)
-
-            # img_dst = cv2.warpPerspective(
-            #     # self.actualImage,
-            #     self.img_desired,
-            #     H,
-            #     self.actualImage.shape[:2][::-1],
-            # )
-
-            # for i in range(4):
-            #     cv2.circle(
-            #         img_dst,
-            #         tuple(self.desiredData.feature[4 * index + i]),
-            #         5,
-            #         (0, 255, 0),
-            #         -1,
-            #     )
-            #     cv2.circle(
-            #         img_dst,
-            #         tuple(self.actualData.feature[4 * index + i]),
-            #         5,
-            #         (0, 0, 255),
-            #         -1,
-            #     )
-            #     cv2.circle(
-            #         self.img_desired,
-            #         tuple(self.desiredData.feature[4 * index + i]),
-            #         5,
-            #         (0, 255, 0),
-            #         -1,
-            #     )
-            #     cv2.circle(
-            #         self.img_desired,
-            #         tuple(self.actualData.feature[4 * index + i]),
-            #         5,
-            #         (0, 0, 255),
-            #         -1,
-            #     )
-
-            # # concatenate the images
-            # img_concat = np.concatenate((self.img_desired, img_dst), axis=1)
-            # cv2.namedWindow("Homography", cv2.WINDOW_NORMAL)
-            # cv2.resizeWindow("Homography", 800, 400)
-            # cv2.imshow("Homography", img_concat)
-            # cv2.waitKey(0)
-        # exit()
         self.Qi = np.array(self.Qi, dtype=np.float32)
         return 0
 
