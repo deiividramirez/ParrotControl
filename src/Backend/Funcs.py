@@ -412,3 +412,18 @@ def decorator_timer(function):
         return result
 
     return wrapper
+
+
+def angleVectors(u: np.ndarray, v: np.ndarray) -> float:
+    """
+    Calculate the angle between two vectors
+
+    @ Parameters
+        u: np.ndarray -> Vector
+        v: np.ndarray -> Vector
+
+    @ Returns
+        float -> Angle between the vectors
+    """
+    return np.arccos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v)))
+

@@ -16,9 +16,9 @@ reset_integrator: 0.01 # Reset integrator with the norm of the error
 # gain_v_kp_max: 1.0
 # gain_v_kp_ini: 0.5
 # l_prime_v_kp: 0.1
-gain_v_kp_max: 1
+gain_v_kp_max: 1.5
 gain_v_kp_ini: 1
-l_prime_v_kp: 2
+l_prime_v_kp: 6
 
 #### Leaders do not require integral gains
 # Integral translation gains
@@ -27,9 +27,9 @@ gain_v_ki_ini: 0.005
 l_prime_v_ki: -0.2
 
 # Proportional rotation gains
-gain_w_kp_max: 0.05
-gain_w_kp_ini: 0.05
-l_prime_w_kp: 1.0
+gain_w_kp_max: 0.15
+gain_w_kp_ini: 0.25
+l_prime_w_kp: -1.0
 
 #### Saturation values from (-max_vel, max_vel) given in m/s
 max_vel: 0.3
