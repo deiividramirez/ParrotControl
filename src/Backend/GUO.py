@@ -147,6 +147,8 @@ class GUO:
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
 
+        self.desiredData.draw = self.desiredData.feature.copy()
+
         return 0
 
     def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
@@ -182,6 +184,8 @@ class GUO:
         self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
+
+        self.actualData.draw = self.actualData.feature.copy()
 
         if self.firstRun:
             self.t0L = self.actualTime

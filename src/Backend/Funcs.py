@@ -25,6 +25,8 @@ class desiredData:
         self.inNormalPlane = []
         self.bearings = []
 
+        self.draw = []
+
     def __repr__(self) -> str:
         return f"features: {type(self.feature)} - inSphere: {type(self.inSphere)}"
 
@@ -44,6 +46,8 @@ class actualData:
         self.inSphere = []
         self.inNormalPlane = []
         self.bearings = []
+
+        self.draw = []
 
     def __repr__(self) -> str:
         return f"features: {type(self.feature)} - inSphere: {type(self.inSphere)}"
