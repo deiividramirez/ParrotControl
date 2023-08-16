@@ -397,13 +397,15 @@ if __name__ == "__main__":
 
     # Connect to the bebop
     connection = bebop.connect(5)
-    bebop.start_video_stream()
-
-    # Set safe indoor parameters
-    bebop.set_max_tilt(5)  # Between 5 and 30
-    bebop.set_max_vertical_speed(0.5)  # Between 0.5 and 2.5
 
     if connection:
+        # Set safe indoor parameters
+        bebop.set_max_tilt(5)  # Between 5 and 30
+        bebop.set_max_vertical_speed(0.5)  # Between 0.5 and 2.5
+        bebop.set_video_stabilization("none")  # roll, pitch, roll-pitch or none
+        bebop.enable_geofence(0)  # 0 to disable, 1 to enable
+
+        bebop.start_video_stream()
         # servo = successConnection(bebop, controlGUO)
         servo = successConnection(bebop, control)
         try:
@@ -412,5 +414,14 @@ if __name__ == "__main__":
             print("\nKeyboardInterrupt has been caught.")
             # bebop.safe_land(5)
             servo.user.safe_close()
+        except Exception as e:
+            print(f"{Fore.RED}[ERROR] {e}{Style.RESET_ALL}")
+            servo.user.safe_close()
+        finally:
+            servo.user.safe_close()
     else:
         print("Error connecting to bebop. Retry")
+
+    bebop.disconnect()
+    bebop.drone_connection.disconnect()
+    print(f"{Fore.CYAN}[INFO] Program finished{Style.RESET_ALL}")

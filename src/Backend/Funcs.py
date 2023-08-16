@@ -426,4 +426,3 @@ def angleVectors(u: np.ndarray, v: np.ndarray) -> float:
         float -> Angle between the vectors
     """
     return np.arccos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v)))
-

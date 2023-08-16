@@ -76,10 +76,12 @@ class GUO:
 
         self.storeImage = None
         self.initTime = time.time()
-        self.actualTime = time.time()
+        self.actualTime = 0
         self.error = np.zeros((1, 6))
         self.errorNorm = 0
         self.errorPix = 0
+        self.vels = np.zeros((6, 1))
+        self.input = np.zeros((6, 1))
 
         self.gain_v = adaptativeGain(
             self.yaml["gain_v_kp_ini"],
@@ -93,10 +95,10 @@ class GUO:
             self.yaml["l_prime_w_kp"],
         )
 
-        self.file_vel_x = open(PATH / "out" / f"drone_{drone_id}_vel_x.txt", "w+")
-        self.file_vel_y = open(PATH / "out" / f"drone_{drone_id}_vel_y.txt", "w+")
-        self.file_vel_z = open(PATH / "out" / f"drone_{drone_id}_vel_z.txt", "w+")
-        self.file_vel_yaw = open(PATH / "out" / f"drone_{drone_id}_vel_yaw.txt", "w+")
+        self.firstRun = True
+        self.smooth = 1
+
+        self.file_input = open(PATH / "out" / f"drone_{drone_id}_input.txt", "w+")
         self.file_error = open(PATH / "out" / f"drone_{drone_id}_error.txt", "w+")
         self.file_errorPix = open(PATH / "out" / f"drone_{drone_id}_errorPix.txt", "w+")
         self.file_time = open(PATH / "out" / f"drone_{drone_id}_time.txt", "w+")
@@ -106,16 +108,7 @@ class GUO:
         # self.file_w_ki = open(PATH / "out" / f"drone_{drone_id}_w_ki.txt", "w+")
         self.file_int = open(PATH / "out" / f"drone_{drone_id}_int.txt", "w+")
 
-        self.file_v_kp.write("0.0\n")
-        self.file_v_ki.write("0.0\n")
-        self.file_w_kp.write("0.0\n")
-        self.file_time.write("0.0\n")
-        self.file_vel_x.write("0.0\n")
-        self.file_vel_y.write("0.0\n")
-        self.file_vel_z.write("0.0\n")
-        self.file_vel_yaw.write("0.0\n")
-        self.file_error.write("0.0\n")
-        self.file_errorPix.write("0.0\n")
+        # self.save()
 
     def __name__(self) -> str:
         return "GUO: 1/dist" if self.yaml["control"] == 1 else "GUO: dist"
@@ -147,7 +140,7 @@ class GUO:
 
         if len(self.yaml["seguimiento"]) == 4:
             self.desiredData.feature = np.array(
-                [self.desiredData.feature[i].copy() for i in [0, 5, 11, 14]]
+                [self.desiredData.feature[i].copy() for i in [0, 5, 9, 14]]
             )
 
         self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
@@ -183,12 +176,18 @@ class GUO:
 
         if len(self.yaml["seguimiento"]) == 4:
             self.actualData.feature = np.array(
-                [self.actualData.feature[i] for i in [0, 5, 11, 14]]
+                [self.actualData.feature[i] for i in [0, 5, 9, 14]]
             )
 
         self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
+
+        if self.firstRun:
+            self.t0L = self.actualTime
+            self.tfL = self.t0L + 1
+
+            self.firstRun = False
 
         return 0
 
@@ -206,16 +205,7 @@ class GUO:
         @Returns:
           vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
         """
-        # if (
-        #     self.storeImage is not None
-        #     and actualImage is not None
-        #     and np.array_equal(self.storeImage, actualImage)
-        # ):
-        #     print("Same image")
-        #     return self.input
-        # else:
-        #     self.storeImage = actualImage
-        # self.storeImage = actualImage
+        self.actualImage = actualImage
 
         if self.getActualData(actualImage, imgAruco) < 0:
             print("[ERROR] Some ArUco's were not found")
@@ -233,8 +223,19 @@ class GUO:
         self.L = self.laplacianGUO(self.actualData.inSphere, self.distances)
         self.Lp = np.linalg.pinv(self.L)
 
+        self.actualTime = time.time() - self.initTime
+        if self.actualTime < self.tfL:
+            self.smooth = (
+                1 - np.cos(np.pi * (self.actualTime - self.t0L) / (self.tfL - self.t0L))
+            ) / 2
+
         self.vels = np.concatenate(
-            (self.Lp @ self.error, self.rotationControl()), axis=0
+            (
+                self.gain_v(self.errorNorm) * self.Lp @ self.error,
+                self.gain_w(self.errorNorm) * self.rotationControl(),
+            ),
+            axis=0,
+            dtype=np.float32,
         )
 
         self.input = np.concatenate(
@@ -242,10 +243,6 @@ class GUO:
             axis=0,
             dtype=np.float32,
         ).reshape((6,))
-
-        self.input[:3] = self.gain_v(self.errorNorm) * self.input[:3]
-        self.input[3:] = self.gain_w(self.errorNorm) * self.input[3:]
-        # self.input[2] *= 2
 
         self.input = np.clip(self.input, -self.yaml["max_vel"], self.yaml["max_vel"])
 
@@ -260,33 +257,27 @@ class GUO:
         return self.input
 
     def save(self):
-        # print("[INFO] Saving data")
         self.actualTime = time.time() - self.initTime
         try:
-            self.file_vel_x.write(f"{self.input[0]}\n")
-            self.file_vel_y.write(f"{self.input[1]}\n")
-            self.file_vel_z.write(f"{self.input[2]}\n")
-            self.file_vel_yaw.write(f"{self.input[5]}\n")
+            self.input.tofile(self.file_input, sep="\t", format="%s")
+            self.file_input.write("\n")
+            
             self.file_time.write(f"{self.actualTime}\n")
-            self.file_error.write(f"{self.errorNorm}\n")
             self.file_errorPix.write(f"{self.errorPix}\n")
+            self.file_error.write(f"{self.errorNorm}\n")
 
             self.file_v_kp.write(f"{self.gain_v.gain}\n")
             self.file_w_kp.write(f"{self.gain_w.gain}\n")
 
-            # print(f"x: {self.input[0]}",
-            #         f"y: {self.input[1]}",
-            #         f"z: {self.input[2]}",
-            #         f"yaw: {self.input[5]}",
-            #         f"error: {error:.5f}",
-            #         f"time: {self.actualTime:.2f}",
-            #         sep="\t")
-
             print(
-                f" Error control: {self.errorNorm:3f}\nError pixels {self.errorPix:3f}\nLambda v: {self.gain_v.gain:3f}\nLambda w: {self.gain_w.gain:3f}\n",
+                f"[INFO]\n",
+                f"Error control: {self.errorNorm:.3f}\n",
+                f"Error pixels: {self.errorPix:.3f}\n",
+                f"Lambda_v_kp -> {self.gain_v.gain:3f}\n",
+                f"Lambda_w_kp -> {self.gain_w.gain:3f}\n",
             )
 
-        except Exception as e:
+        except ValueError as e:
             print("[ERROR] Error writing in file: ", e)
 
     def rotationControl(self) -> np.ndarray:
@@ -381,20 +372,18 @@ class GUO:
         return L
 
     def close(self):
-        self.file_errorPix.close()
-        self.file_vel_yaw.close()
-        self.file_error.close()
-        self.file_vel_x.close()
-        self.file_vel_y.close()
-        self.file_vel_z.close()
+        self.file_input.close()
         self.file_time.close()
+        self.file_error.close()
+        self.file_errorPix.close()
         self.file_v_kp.close()
         self.file_w_kp.close()
 
 
 if __name__ == "__main__":
     img = cv2.imread(f"{PATH}/data/desired_1.jpg")
-    control = GUO(img, 1)
+    img2 = cv2.imread(f"{PATH}/data/desired_2.jpg")
+    control = GUO(img, img2, 1)
 
     print(
         control.getVels(

@@ -4,10 +4,13 @@
 camera_intrinsic_parameters: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
 
 #### seguimiento must contain the ArUco IDs that the drone will follow as a list
-seguimiento: [96, 99]
+seguimiento: [1, 4]
+# seguimiento: [1, 2, 3, 4]
+
+# seguimiento: [96, 99]
 # seguimiento: [96, 97, 98, 99]
 
-reset_integrator: 0.01 # Reset integrator with the norm of the error
+reset_integrator: 0.01 # Reset integrator with the norm of the error (pixels)
 
 #### This gains are used for the control law
 # When l_prime_* > 0, then it must -> init <= max. It means that the gain increase when error approaches to 0
@@ -27,8 +30,8 @@ gain_v_ki_ini: 0.005
 l_prime_v_ki: -0.2
 
 # Proportional rotation gains
-gain_w_kp_max: 0.15
-gain_w_kp_ini: 0.25
+gain_w_kp_max: 0.05
+gain_w_kp_ini: 0.12
 l_prime_w_kp: -1.0
 
 #### Saturation values from (-max_vel, max_vel) given in m/s
@@ -42,7 +45,7 @@ max_vel: 0.3
 #  ------------- |      4: -P_gij * gij* with rotation
 #  ------------- |      5: gij - gij* with rotation
 #  ------------- |      6: (-P_gij * gij*) + (gij - gij*) with rotation
-control: 5
+control: 1
 
 #### Send velocities
 # 0: move_relative
