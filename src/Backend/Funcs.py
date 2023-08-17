@@ -110,7 +110,7 @@ class drawArucoClass:
             None
         """
         for i in range(info.shape[0]):
-            cv2.circle(self.img, tuple(info[i]), 3, color, -1)
+            cv2.circle(self.img, tuple(info[i]), 5, color, -1)
 
 
 class adaptativeGain:
@@ -248,7 +248,7 @@ def drawArucoPoints(
     corners, ids = info
     for i in range(len(ids)):
         for j in range(4):
-            cv2.circle(img, tuple(corners[i][0][j]), 3, color, -1)
+            cv2.circle(img, tuple(corners[i][0][j]), 5, color, -1)
     return img
 
 

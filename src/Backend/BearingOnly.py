@@ -4,7 +4,6 @@ import math
 import time
 import cv2
 
-
 PATH = Path(__file__).parent.absolute().parent.absolute().parent.absolute()
 
 
@@ -118,6 +117,8 @@ class BearingOnly:
         # self.save()
         self.Qis = []
 
+        self.toplot = [[], [[], [], [], [], [], [], [], [], []], [[], [], [], [], [], [], [], [], []]]
+
     def __name__(self) -> str:
         if self.yaml["control"] == 1:
             return "BearingOnly (-P_gij * gij*)"
@@ -212,9 +213,6 @@ class BearingOnly:
         self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
         # self.actualData.bearings = self.actualData.inSphere
 
-        print("Actual bearings: ", self.actualData.bearings)
-        print("Desired bearings: ", self.desiredData.bearings)
-
         if self.firstRun:
             self.t0L = self.actualTime
             self.tfL = self.t0L + 1
@@ -275,41 +273,42 @@ class BearingOnly:
                 )
             elif self.yaml["control"] == 4:
                 temp = -ortoProj(self.actualData.bearings[index]) @ (
-                    (n(p.eye(3) + self.Qi[index]) / 2)
-                    @ self.desiredData.bearings[index]
+                    (np.eye(3) + self.Qi[index]) @ self.desiredData.bearings[index]
                 )
             elif self.yaml["control"] == 5:
                 temp = self.actualData.bearings[index] - (
-                    (n(p.eye(3) + self.Qi[index]) / 2)
-                    @ self.desiredData.bearings[index]
+                    (np.eye(3) + self.Qi[index]) @ self.desiredData.bearings[index]
                 )
             elif self.yaml["control"] == 6:
                 temp = (
                     -ortoProj(self.actualData.bearings[index])
-                    @ (
-                        ((np.eye(3) + self.Qi[index]) / 2)
-                        @ self.desiredData.bearings[index]
-                    )
+                    @ ((np.eye(3) + self.Qi[index]) @ self.desiredData.bearings[index])
                     + self.actualData.bearings[index]
-                    - (
-                        ((np.eye(3) + self.Qi[index]) / 2)
-                        @ self.desiredData.bearings[index]
-                    )
+                    - ((np.eye(3) + self.Qi[index]) @ self.desiredData.bearings[index])
                 )
 
             U += temp.reshape(-1, 1)
             if self.yaml["control"] in (4, 5, 6):
                 Uw += -(self.Qi[index].T - self.Qi[index])
 
-            print(f"""----------------------------------------
-Actual {index+1}   -> {self.actualData.bearings[index]}
-Desired {index+1}  -> {self.desiredData.bearings[index]}
-Q{index+1}T @ gij  => {self.Qi[index].T @ self.actualData.bearings[index]}
-Q{index+1} @ gij   => {self.Qi[index] @ self.actualData.bearings[index]}
-Q{index+1}T (deg)  => {np.rad2deg(r2E(self.Qi[index].T))}
-Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
+                print(
+                    f"""----------------------------------------
+  Actual {index+1}   -> {self.actualData.bearings[index]}
+  Desired {index+1}  -> {self.desiredData.bearings[index]}
+  Q{index+1}T (deg)  => {np.rad2deg(r2E(self.Qi[index].T))}
+  Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
 """
-            )
+                )
+            else:
+                print(
+                    f"""----------------------------------------
+  Actual {index+1}   -> {self.actualData.bearings[index]}
+  Desired {index+1}  -> {self.desiredData.bearings[index]}
+"""
+                )
+
+        # Q{index+1}T @ gij  => {self.Qi[index].T @ self.actualData.bearings[index]}
+        # Q{index+1} @ gij   => {self.Qi[index] @ self.actualData.bearings[index]}
 
         self.errorVec = np.linalg.norm(U, axis=1).T
         self.errorNorm = np.linalg.norm(self.errorVec)
@@ -335,8 +334,7 @@ Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
         self.vels = np.concatenate(
             (
                 (self.gains_v_kp * U) + (self.gains_v_ki * self.integral),
-                # self.gains_w_kp * decomposeSkewSymmetricMatrix(Uw),
-                self.gains_w_kp * np.zeros((3, 1)),
+                self.gains_w_kp * decomposeSkewSymmetricMatrix(Uw),
             ),
             axis=0,
             dtype=np.float32,
@@ -388,8 +386,8 @@ Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
         ############################################################
         for index in range(self.actualData.bearings.shape[0]):
             H = cv2.findHomography(
-                self.desiredData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
-                self.actualData.feature[4 * index : 4 * index + 4].reshape(-1, 1, 2),
+                self.desiredData.feature[4 * index : 4 * index + 4],
+                self.actualData.feature[4 * index : 4 * index + 4],
             )[0]
 
             if H is None:
@@ -422,21 +420,84 @@ Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
             num, Rs, Ts, Ns = cv2.decomposeHomographyMat(
                 H, self.yaml["camera_intrinsic_parameters"]
             )
+            # H = cv2.findHomography(p1.T, p2.T)[0] #Deseados vs actuales
+            # # H = findHomography(p1.T, p2.T)[0]
+            # if H is None:
+            #     print("H is None")
+
+            # num, Rs, Ts, Ns = cv2.decomposeHomographyMat(H, K2)
+            # tries = []
+            # for i in range(num):
+            #     if Ns[i][2] > 0:
+            #         tries.append((Rs[i], Ts[i], Ns[i]))
+
+            # if len(tries) == 0:
+            #     print("No tries")
+            # elif len(tries) > 1:
+            #     if tries[0][2][2] > tries[1][2][2]:
+            #         R, T, N = tries[0]
+            #     else:
+            #         R, T, N = tries[1]
+
+            #     print("R:", R)
+            #     print("deg -> ", deggg := np.rad2deg(rot2Euler(R), dtype=float), "\n")
+            #     ax.scatter(t, deggg[0], marker=".", color="red")
+            #     ax.scatter(t, deggg[1], marker=".", color="green")
+            #     ax.scatter(t, deggg[2], marker=".", color="blue")
 
             tries = []
             for i in range(num):
                 if Ns[i][2] > 0:
-                    tries.append([Rs[i].T, Ts[i], Ns[i]])
+                    tries.append([Rs[i], Ts[i], Ns[i]])
 
             if len(tries) == 0:
                 return -1
             elif len(tries) == 1:
                 self.Qi.append(tries[0][0])
             else:
-                if tries[0][2][2] > tries[1][2][2]:
-                    self.Qi.append(tries[1][0])
+                print("1 ->", (twotwo:=np.rad2deg(r2E(tries[0][0])), tries[0][2][2]))
+                print("2 ->", (oneone:=np.rad2deg(r2E(tries[1][0])), tries[1][2][2]))
+                self.toplot[0].append(self.actualTime)
+                if index == 0:
+                    self.toplot[1][0].append(twotwo[0])
+                    self.toplot[1][1].append(twotwo[1])
+                    self.toplot[1][2].append(twotwo[2])
+                    self.toplot[1][3].append(oneone[0])
+                    self.toplot[1][4].append(oneone[1])
+                    self.toplot[1][5].append(oneone[2])
                 else:
+                    self.toplot[2][0].append(twotwo[0])
+                    self.toplot[2][1].append(twotwo[1])
+                    self.toplot[2][2].append(twotwo[2])
+                    self.toplot[2][3].append(oneone[0])
+                    self.toplot[2][4].append(oneone[1])
+                    self.toplot[2][5].append(oneone[2])
+
+                if tries[0][2][2] > tries[1][2][2]:
                     self.Qi.append(tries[0][0])
+                    print("Selected 1")
+
+                    if index == 0:
+                        self.toplot[1][6].append(twotwo[0])
+                        self.toplot[1][7].append(twotwo[1])
+                        self.toplot[1][8].append(twotwo[2])
+                    else:
+                        self.toplot[2][6].append(twotwo[0])
+                        self.toplot[2][7].append(twotwo[1])
+                        self.toplot[2][8].append(twotwo[2])
+                else:
+                    self.Qi.append(tries[1][0])
+                    print("Selected 2")
+
+                    if index == 0:
+                        self.toplot[1][6].append(oneone[0])
+                        self.toplot[1][7].append(oneone[1])
+                        self.toplot[1][8].append(oneone[2])
+                    else:
+                        self.toplot[2][6].append(oneone[0])
+                        self.toplot[2][7].append(oneone[1])
+                        self.toplot[2][8].append(oneone[2])
+
 
         self.Qi = np.array(self.Qi, dtype=np.float32)
         return 0
@@ -507,15 +568,27 @@ Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
         return np.array(temp, dtype=np.float32).reshape(-1, 3)
 
     def close(self):
-        self.file_input.close()
-        self.file_time.close()
-        self.file_error.close()
-        self.file_errorPix.close()
-        self.file_v_kp.close()
-        self.file_w_kp.close()
+        print("[INFO] Closing files")
+        try:
+            self.file_input.close()
+            self.file_time.close()
+            self.file_error.close()
+            self.file_errorPix.close()
+            self.file_v_kp.close()
+            self.file_w_kp.close()
 
-        self.file_v_ki.close()
-        self.file_int.close()
+            self.file_v_ki.close()
+            self.file_int.close()
+        except ValueError as e:
+            print("[ERROR] Error closing files >> ", e)
+
+        print("[INFO] Saving plots")
+        tiempo = np.array(self.toplot[0], dtype=np.float32)
+        angles1 = np.array(self.toplot[1], dtype=np.float32)
+        angles2 = np.array(self.toplot[2], dtype=np.float32)
+        np.save(PATH / "out" / f"drone_{self.drone_id}_anglesTime.npy", tiempo)
+        np.save(PATH / "out" / f"drone_{self.drone_id}_angles1.npy", angles1)
+        np.save(PATH / "out" / f"drone_{self.drone_id}_angles2.npy", angles2)
 
 
 if __name__ == "__main__":

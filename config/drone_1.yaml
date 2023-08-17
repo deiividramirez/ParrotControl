@@ -1,16 +1,16 @@
 ######### This file contains the configuration for the drone #########
 
 #### Camera intrinsic parameters K as a 9-length vector
-camera_intrinsic_parameters: [761.4166, 0, 640, 0, 761.4166, 360, 0, 0, 1]
+camera_intrinsic_parameters: [789.6886171366667, 0, 650.9540911466667, 0, 785.8057228833335, 345.30825782666665, 0, 0, 1]
 
 #### seguimiento must contain the ArUco IDs that the drone will follow as a list
-# seguimiento: [1, 4]
+seguimiento: [1, 4]
 # seguimiento: [1, 2, 3, 4]
 
-seguimiento: [96, 99]
+# seguimiento: [96, 99]
 # seguimiento: [96, 97, 98, 99]
 
-reset_integrator: 0.01 # Reset integrator with the norm of the error (pixels)
+reset_integrator: 0.008 # Reset integrator with the norm of the error (pixels)
 
 #### This gains are used for the control law
 # When l_prime_* > 0, then it must -> init <= max. It means that the gain increase when error approaches to 0
@@ -45,7 +45,7 @@ max_vel: 0.3
 #  ------------- |      4: -P_gij * gij* with rotation
 #  ------------- |      5: gij - gij* with rotation
 #  ------------- |      6: (-P_gij * gij*) + (gij - gij*) with rotation
-control: 2
+control: 4
 
 #### Send velocities
 # 0: move_relative

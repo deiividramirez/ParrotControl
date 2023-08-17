@@ -402,9 +402,11 @@ if __name__ == "__main__":
         # Set safe indoor parameters
         bebop.set_max_tilt(5)  # Between 5 and 30
         bebop.set_max_vertical_speed(0.5)  # Between 0.5 and 2.5
-        bebop.set_video_stabilization("none")  # roll, pitch, roll_pitch or none
+        bebop.set_video_stabilization("roll_pitch")  # roll, pitch, roll_pitch or none
         # bebop.set_picture_format("jpeg")  # jpeg or snapshot
         bebop.enable_geofence(0)  # 0 to disable, 1 to enable
+
+        bebop.pan_tilt_camera(0, 0)
 
         bebop.start_video_stream()
         # servo = successConnection(bebop, controlGUO)
