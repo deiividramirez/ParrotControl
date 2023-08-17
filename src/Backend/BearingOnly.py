@@ -111,13 +111,10 @@ class BearingOnly:
         self.file_v_kp = open(PATH / "out" / f"drone_{drone_id}_v_kp.txt", "w+")
         self.file_v_ki = open(PATH / "out" / f"drone_{drone_id}_v_ki.txt", "w+")
         self.file_w_kp = open(PATH / "out" / f"drone_{drone_id}_w_kp.txt", "w+")
-        # self.file_w_ki = open(PATH / "out" / f"drone_{drone_id}_w_ki.txt", "w+")
         self.file_int = open(PATH / "out" / f"drone_{drone_id}_int.txt", "w+")
 
-        # self.save()
         self.Qis = []
-
-        self.toplot = [[], [[], [], [], [], [], [], [], [], []], [[], [], [], [], [], [], [], [], []]]
+        self.lastYaw = None
 
     def __name__(self) -> str:
         if self.yaml["control"] == 1:
@@ -162,12 +159,12 @@ class BearingOnly:
             self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
 
-        # self.desiredData.draw = self.desiredData.feature
-        self.desiredData.draw = np.zeros(
-            (self.desiredData.feature.shape[0] // 2, 2), dtype=np.int32
-        )
-        for index, i in enumerate(range(0, self.desiredData.feature.shape[0], 2)):
-            self.desiredData.draw[index] = self.desiredData.feature[i]
+        self.desiredData.draw = self.desiredData.feature
+        # self.desiredData.draw = np.zeros(
+        #     (self.desiredData.feature.shape[0] // 2, 2), dtype=np.int32
+        # )
+        # for index, i in enumerate(range(0, self.desiredData.feature.shape[0], 2)):
+        #     self.desiredData.draw[index] = self.desiredData.feature[i]
 
         self.desiredData.bearings = self.middlePoint(self.desiredData.inSphere)
         # self.desiredData.bearings = self.desiredData.inSphere
@@ -203,12 +200,12 @@ class BearingOnly:
             self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
         )
 
-        # self.actualData.draw = self.actualData.feature
-        self.actualData.draw = np.zeros(
-            (self.actualData.feature.shape[0] // 2, 2), dtype=np.int32
-        )
-        for index, i in enumerate(range(0, self.actualData.feature.shape[0], 2)):
-            self.actualData.draw[index] = self.actualData.feature[i, :]
+        self.actualData.draw = self.actualData.feature
+        # self.actualData.draw = np.zeros(
+        #     (self.actualData.feature.shape[0] // 2, 2), dtype=np.int32
+        # )
+        # for index, i in enumerate(range(0, self.actualData.feature.shape[0], 2)):
+        #     self.actualData.draw[index] = self.actualData.feature[i, :]
 
         self.actualData.bearings = self.middlePoint(self.actualData.inSphere)
         # self.actualData.bearings = self.actualData.inSphere
@@ -272,12 +269,15 @@ class BearingOnly:
                     - self.desiredData.bearings[index]
                 )
             elif self.yaml["control"] == 4:
-                temp = -ortoProj(self.actualData.bearings[index]) @ (
-                    (np.eye(3) + self.Qi[index]) @ self.desiredData.bearings[index]
+                temp = (
+                    -ortoProj(self.actualData.bearings[index])
+                    @ self.desiredData.bearings[index]
                 )
+
             elif self.yaml["control"] == 5:
                 temp = self.actualData.bearings[index] - (
-                    (np.eye(3) + self.Qi[index]) @ self.desiredData.bearings[index]
+                    ((np.eye(3) + self.Qi[index]) / 2)
+                    @ self.desiredData.bearings[index]
                 )
             elif self.yaml["control"] == 6:
                 temp = (
@@ -324,7 +324,7 @@ class BearingOnly:
 
         self.gains_v_kp = self.smooth * self.gain_v_kp(2 * self.errorVec)
         self.gains_v_ki = self.smooth * self.gain_v_ki(2 * self.errorVec)
-        self.gains_w_kp = self.smooth * self.gain_w_kp(2 * self.errorVec)
+        self.gains_w_kp = self.smooth * self.gain_w_kp(self.errorVec)
 
         self.integral += np.sign(U) * 0.0327
         for i in range(self.errorVec.shape[0]):
@@ -346,7 +346,7 @@ class BearingOnly:
             dtype=np.float32,
         ).reshape((6,))
 
-        if self.yaml["control"] == 1:
+        if self.yaml["control"] in (1, 4):
             self.input[0] *= 2
             # self.input[1] *= 1
             # self.input[2] *= 1
@@ -364,26 +364,6 @@ class BearingOnly:
 
     def homography(self) -> int:
         self.Qi = []
-
-        ############################################################
-        # for index in range(self.actualData.bearings.shape[0]):
-        #     x = normalize(
-        #         np.cross(
-        #             self.actualData.bearings[index],
-        #             self.desiredData.bearings[index],
-        #         )
-        #     )
-        #     th = angleVectors(
-        #         self.actualData.bearings[index], self.desiredData.bearings[index]
-        #     )
-        #     X = skewSymmetricMatrix(x)
-        #     R = np.eye(3) + math.sin(th) * X + (1 - math.cos(th)) * (X @ X)
-        #     self.Qi.append(R.T)
-        #     # print(
-        #     #     f"Qi_{index}:\n{r2E(R.T)} - {R.T @ self.actualData.bearings[index]} = {self.desiredData.bearings[index]}"
-        #     # )
-
-        ############################################################
         for index in range(self.actualData.bearings.shape[0]):
             H = cv2.findHomography(
                 self.desiredData.feature[4 * index : 4 * index + 4],
@@ -394,56 +374,9 @@ class BearingOnly:
                 print("[ERROR] Homography could not be calculated")
                 return -1
 
-            # res = (
-            #     H
-            #     @ np.hstack(
-            #         (
-            #             self.desiredData.feature[4 * index : 4 * index + 4],
-            #             np.ones((4, 1)),
-            #         )
-            #     ).T
-            # )
-            # res /= res[2]
-            # res = np.array(res, dtype=np.int32)
-
-            # [
-            #     print(f"{np.linalg.norm(i-j)}")
-            #     for i, j in zip(
-            #         res[0:2, :].T,
-            #         self.actualData.feature[4 * index : 4 * index + 4],
-            #     )
-            # ]
-
-            # # # H /= np.linalg.norm(H[:, 0])
-            # H /= H[1, 1]
-
             num, Rs, Ts, Ns = cv2.decomposeHomographyMat(
                 H, self.yaml["camera_intrinsic_parameters"]
             )
-            # H = cv2.findHomography(p1.T, p2.T)[0] #Deseados vs actuales
-            # # H = findHomography(p1.T, p2.T)[0]
-            # if H is None:
-            #     print("H is None")
-
-            # num, Rs, Ts, Ns = cv2.decomposeHomographyMat(H, K2)
-            # tries = []
-            # for i in range(num):
-            #     if Ns[i][2] > 0:
-            #         tries.append((Rs[i], Ts[i], Ns[i]))
-
-            # if len(tries) == 0:
-            #     print("No tries")
-            # elif len(tries) > 1:
-            #     if tries[0][2][2] > tries[1][2][2]:
-            #         R, T, N = tries[0]
-            #     else:
-            #         R, T, N = tries[1]
-
-            #     print("R:", R)
-            #     print("deg -> ", deggg := np.rad2deg(rot2Euler(R), dtype=float), "\n")
-            #     ax.scatter(t, deggg[0], marker=".", color="red")
-            #     ax.scatter(t, deggg[1], marker=".", color="green")
-            #     ax.scatter(t, deggg[2], marker=".", color="blue")
 
             tries = []
             for i in range(num):
@@ -453,52 +386,23 @@ class BearingOnly:
             if len(tries) == 0:
                 return -1
             elif len(tries) == 1:
-                self.Qi.append(tries[0][0])
+                self.lastYaw = r2E(tries[0][0])[1]
             else:
-                print("1 ->", (twotwo:=np.rad2deg(r2E(tries[0][0])), tries[0][2][2]))
-                print("2 ->", (oneone:=np.rad2deg(r2E(tries[1][0])), tries[1][2][2]))
-                self.toplot[0].append(self.actualTime)
-                if index == 0:
-                    self.toplot[1][0].append(twotwo[0])
-                    self.toplot[1][1].append(twotwo[1])
-                    self.toplot[1][2].append(twotwo[2])
-                    self.toplot[1][3].append(oneone[0])
-                    self.toplot[1][4].append(oneone[1])
-                    self.toplot[1][5].append(oneone[2])
-                else:
-                    self.toplot[2][0].append(twotwo[0])
-                    self.toplot[2][1].append(twotwo[1])
-                    self.toplot[2][2].append(twotwo[2])
-                    self.toplot[2][3].append(oneone[0])
-                    self.toplot[2][4].append(oneone[1])
-                    self.toplot[2][5].append(oneone[2])
-
-                if tries[0][2][2] > tries[1][2][2]:
-                    self.Qi.append(tries[0][0])
-                    print("Selected 1")
-
-                    if index == 0:
-                        self.toplot[1][6].append(twotwo[0])
-                        self.toplot[1][7].append(twotwo[1])
-                        self.toplot[1][8].append(twotwo[2])
+                if self.lastYaw is None:
+                    if tries[0][2][2] > tries[1][2][2]:
+                        self.lastYaw = r2E(tries[0][0])[1]
                     else:
-                        self.toplot[2][6].append(twotwo[0])
-                        self.toplot[2][7].append(twotwo[1])
-                        self.toplot[2][8].append(twotwo[2])
+                        self.lastYaw = r2E(tries[1][0])[1]
                 else:
-                    self.Qi.append(tries[1][0])
-                    print("Selected 2")
-
-                    if index == 0:
-                        self.toplot[1][6].append(oneone[0])
-                        self.toplot[1][7].append(oneone[1])
-                        self.toplot[1][8].append(oneone[2])
+                    # if tries[0][2][2] < tries[1][2][2]:
+                    if abs(self.lastYaw - r2E(tries[0][0])[1]) < abs(
+                        self.lastYaw - r2E(tries[1][0])[1]
+                    ):
+                        self.lastYaw = r2E(tries[0][0])[1]
                     else:
-                        self.toplot[2][6].append(oneone[0])
-                        self.toplot[2][7].append(oneone[1])
-                        self.toplot[2][8].append(oneone[2])
+                        self.lastYaw = r2E(tries[1][0])[1]
 
-
+            self.Qi.append(e2R(0, self.lastYaw, 0))
         self.Qi = np.array(self.Qi, dtype=np.float32)
         return 0
 
@@ -581,14 +485,6 @@ class BearingOnly:
             self.file_int.close()
         except ValueError as e:
             print("[ERROR] Error closing files >> ", e)
-
-        print("[INFO] Saving plots")
-        tiempo = np.array(self.toplot[0], dtype=np.float32)
-        angles1 = np.array(self.toplot[1], dtype=np.float32)
-        angles2 = np.array(self.toplot[2], dtype=np.float32)
-        np.save(PATH / "out" / f"drone_{self.drone_id}_anglesTime.npy", tiempo)
-        np.save(PATH / "out" / f"drone_{self.drone_id}_angles1.npy", angles1)
-        np.save(PATH / "out" / f"drone_{self.drone_id}_angles2.npy", angles2)
 
 
 if __name__ == "__main__":

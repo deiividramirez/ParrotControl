@@ -205,8 +205,8 @@ class UserVision:
                                 self.vels[0],
                                 self.vels[1],
                                 self.vels[2],
-                                self.vels[5],
-                                # 0,
+                                # self.vels[5],
+                                0,
                             )
                         elif self.control.yaml["vels"] == 1:
                             print(
@@ -405,8 +405,7 @@ if __name__ == "__main__":
         bebop.set_video_stabilization("roll_pitch")  # roll, pitch, roll_pitch or none
         # bebop.set_picture_format("jpeg")  # jpeg or snapshot
         bebop.enable_geofence(0)  # 0 to disable, 1 to enable
-
-        bebop.pan_tilt_camera(0, 0)
+        bebop.pan_tilt_camera(0, 0)  # get camera to center position
 
         bebop.start_video_stream()
         # servo = successConnection(bebop, controlGUO)

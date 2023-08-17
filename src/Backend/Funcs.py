@@ -381,14 +381,46 @@ def r2E(R: np.ndarray) -> np.ndarray:
     @ Returns
         np.ndarray -> Euler angles
     """
-    return np.array(
-        [
-            np.arctan2(R[2, 1], R[2, 2]),
-            np.arctan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2)),
-            np.arctan2(R[1, 0], R[0, 0]),
-        ]
-    )
+        # double roll = 0, pitch = 0, yaw = 0;
+    #     if (R.at<double>(2, 0) < 1)
+    #     {
+    #             if (R.at<double>(2, 0) > -1)
+    #             {
+    #                     roll = atan2(R.at<double>(2, 1), R.at<double>(2, 2));
+    #                     pitch = asin(-R.at<double>(2, 0));
+    #                     yaw = atan2(R.at<double>(1, 0), R.at<double>(0, 0));
+    #             }
+    #             else
+    #             {
+    #                     // Not a unique solution:  roll - yaw = atan2(-m12,m11)
+    #                     roll = -atan2(-R.at<double>(1, 2), R.at<double>(1, 1));
+    #                     pitch = -M_PI / 2.0;
+    #                     yaw = 0;
+    #             }
+    #     }
+    #     else
+    #     {
+    #             // Not a unique solution:  roll + yaw = atan2(-m12,m11)
+    #             roll = atan2(-R.at<double>(1, 2), R.at<double>(1, 1));
+    #             pitch = M_PI / 2.0;
+    #             yaw = 0;
+    #     }
 
+    if R[2, 0] < 1:
+        if R[2, 0] > -1:
+            roll = np.arctan2(R[2, 1], R[2, 2])
+            pitch = np.arcsin(-R[2, 0])
+            yaw = np.arctan2(R[1, 0], R[0, 0])
+        else:
+            roll = -np.arctan2(-R[1, 2], R[1, 1])
+            pitch = -np.pi / 2.0
+            yaw = 0
+    else:
+        roll = np.arctan2(-R[1, 2], R[1, 1])
+        pitch = np.pi / 2.0
+        yaw = 0
+
+    return np.array([roll, pitch, yaw])
 
 def decorator_timer(function):
     """
