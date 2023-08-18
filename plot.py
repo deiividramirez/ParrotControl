@@ -244,36 +244,36 @@ if integ is not None:
 
 #########################  TIGHT LAYOUT, SAVING AND SHOWING  #########################
 # plt.get_current_fig_manager().full_screen_toggle()
-fig.tight_layout()
-fig.savefig(f"{PATH}/out/out_velocities.png", bbox_inches="tight", pad_inches=0.1)
+# fig.tight_layout()
+# fig.savefig(f"{PATH}/out/out_velocities.png", bbox_inches="tight", pad_inches=0.1)
 
-fig2, ax2 = plt.subplots(2, 2, figsize=(10, 7), num=f"Angles", sharex=True)
-time = np.loadtxt(f"{PATH}/out/drone_{DRONE}_toAnglesTime.txt")
-angles1 = np.rad2deg(np.loadtxt(f"{PATH}/out/drone_{DRONE}_toAngles1.txt"))
-angles2 = np.rad2deg(np.loadtxt(f"{PATH}/out/drone_{DRONE}_toAngles2.txt"))
-time = time[:].reshape(-1, 2)
-
-
-maxangle = np.min([angles1.shape[0], angles2.shape[0], time.shape[0]])
-maxtime = np.min([angles1.shape[0], angles2.shape[0], time.shape[0]])
+# fig2, ax2 = plt.subplots(2, 2, figsize=(10, 7), num=f"Angles", sharex=True)
+# time = np.loadtxt(f"{PATH}/out/drone_{DRONE}_toAnglesTime.txt")
+# angles1 = np.rad2deg(np.loadtxt(f"{PATH}/out/drone_{DRONE}_toAngles1.txt"))
+# angles2 = np.rad2deg(np.loadtxt(f"{PATH}/out/drone_{DRONE}_toAngles2.txt"))
+# time = time[:].reshape(-1, 2)
 
 
-ax2[0, 0].title.set_text("Angles 1")
-ax2[0, 0].plot(time[:maxangle, 0], angles1[:maxtime, 0], "-", label="pitch - R1", color="blue")
-ax2[0, 0].plot(time[:maxangle, 0], angles1[:maxtime, 1], "-", label="yaw - R1", color="orange")
-ax2[0, 0].plot(time[:maxangle, 0], angles1[:maxtime, 2], "-", label="roll - R1", color="green")
-ax2[1, 0].title.set_text("Angles 2")
-ax2[1, 0].plot(time[:maxangle, 0], angles1[:maxtime, 3], "-", label="yaw - sent", color="orange")
-ax2[0, 0].legend(loc="best", bbox_to_anchor=(1, 0.5))
-ax2[1, 0].legend(loc="best", bbox_to_anchor=(1, 0.5))
+# maxangle = np.min([angles1.shape[0], angles2.shape[0], time.shape[0]])
+# maxtime = np.min([angles1.shape[0], angles2.shape[0], time.shape[0]])
 
-ax2[0, 1].title.set_text("Angles 1")
-ax2[0, 1].plot(time[:maxangle, 0], angles2[:maxtime, 0], "-", label="pitch - R1", color="blue")
-ax2[0, 1].plot(time[:maxangle, 0], angles2[:maxtime, 1], "-", label="yaw - R1", color="orange")
-ax2[0, 1].plot(time[:maxangle, 0], angles2[:maxtime, 2], "-", label="roll - R1", color="green")
-ax2[1, 1].title.set_text("Angles 2")
-ax2[1, 1].plot(time[:maxangle, 0], angles2[:maxtime, 3], "-", label="yaw - sent", color="orange")
-ax2[0, 1].legend(loc="best", bbox_to_anchor=(1, 0.5))
-ax2[1, 1].legend(loc="best", bbox_to_anchor=(1, 0.5))
+
+# ax2[0, 0].title.set_text("Angles 1")
+# ax2[0, 0].plot(time[:maxangle, 0], angles1[:maxtime, 0], "-", label="pitch - R1", color="blue")
+# ax2[0, 0].plot(time[:maxangle, 0], angles1[:maxtime, 1], "-", label="yaw - R1", color="orange")
+# ax2[0, 0].plot(time[:maxangle, 0], angles1[:maxtime, 2], "-", label="roll - R1", color="green")
+# ax2[1, 0].title.set_text("Angles 2")
+# ax2[1, 0].plot(time[:maxangle, 0], angles1[:maxtime, 3], "-", label="yaw - sent", color="orange")
+# ax2[0, 0].legend(loc="best", bbox_to_anchor=(1, 0.5))
+# ax2[1, 0].legend(loc="best", bbox_to_anchor=(1, 0.5))
+
+# ax2[0, 1].title.set_text("Angles 1")
+# ax2[0, 1].plot(time[:maxangle, 0], angles2[:maxtime, 0], "-", label="pitch - R1", color="blue")
+# ax2[0, 1].plot(time[:maxangle, 0], angles2[:maxtime, 1], "-", label="yaw - R1", color="orange")
+# ax2[0, 1].plot(time[:maxangle, 0], angles2[:maxtime, 2], "-", label="roll - R1", color="green")
+# ax2[1, 1].title.set_text("Angles 2")
+# ax2[1, 1].plot(time[:maxangle, 0], angles2[:maxtime, 3], "-", label="yaw - sent", color="orange")
+# ax2[0, 1].legend(loc="best", bbox_to_anchor=(1, 0.5))
+# ax2[1, 1].legend(loc="best", bbox_to_anchor=(1, 0.5))
 
 plt.show()
