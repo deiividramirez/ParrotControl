@@ -261,9 +261,7 @@ class UserVision:
                     self.drawArucoClass.drawAruco(self.img, self.imgAruco)
                     try:
                         self.drawArucoClass.drawNew(self.control.desiredData.draw)
-                        self.drawArucoClass.drawNew(
-                            self.control.actualData.draw, (255, 0, 0)
-                        )
+                        self.drawArucoClass.drawNew(self.control.actualData.draw)
                     except:
                         pass
                     cv2.imshow("Actual image", self.drawArucoClass.img)

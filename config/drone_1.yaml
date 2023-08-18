@@ -4,10 +4,10 @@
 camera_intrinsic_parameters: [789.6886171366667, 0, 650.9540911466667, 0, 785.8057228833335, 345.30825782666665, 0, 0, 1]
 
 #### seguimiento must contain the ArUco IDs that the drone will follow as a list
-# seguimiento: [1, 4]
+seguimiento: [1, 4]
 # seguimiento: [1, 2, 3, 4]
 
-seguimiento: [96, 99]
+# seguimiento: [96, 99]
 # seguimiento: [96, 97, 98, 99]
 
 reset_integrator: 0.008 # Reset integrator with the norm of the error (pixels)
@@ -45,7 +45,7 @@ max_vel: 0.3
 #  ------------- |      4: -P_gij * gij* with rotation
 #  ------------- |      5: gij - gij* with rotation
 #  ------------- |      6: (-P_gij * gij*) + (gij - gij*) with rotation
-control: 4
+control: 2
 
 #### Send velocities
 # 0: move_relative

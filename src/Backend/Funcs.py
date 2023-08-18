@@ -83,6 +83,10 @@ class drawArucoClass:
             img: np.ndarray -> Image
         """
         self.img = None
+        self.maxPoints = 150
+        self.colors = np.random.randint(0, 255, (self.maxPoints, 3)).tolist()
+        for i in range(self.maxPoints):
+            self.colors[i] = tuple(self.colors[i])
 
     def drawAruco(self, img: np.ndarray, info: tuple) -> None:
         """
@@ -98,7 +102,7 @@ class drawArucoClass:
         self.img = img.copy()
         drawArucoPoints(self.img, info)
 
-    def drawNew(self, info: np.ndarray, color: tuple = (0, 255, 0)) -> None:
+    def drawNew(self, info: np.ndarray, color: tuple = None) -> None:
         """
         Draw the new points without replace the image
 
@@ -109,8 +113,15 @@ class drawArucoClass:
         @ Returns
             None
         """
-        for i in range(info.shape[0]):
-            cv2.circle(self.img, tuple(info[i]), 5, color, -1)
+        if color is None and info.shape[0] < self.maxPoints:
+            for i in range(info.shape[0]):
+                cv2.circle(self.img, tuple(info[i]), 5, self.colors[i], -1)
+        elif info.shape[0] > self.maxPoints:
+            for i in range(info.shape[0]):
+                cv2.circle(self.img, tuple(info[i]), 5, (0, 0, 255), -1)
+        else:
+            for i in range(info.shape[0]):
+                cv2.circle(self.img, tuple(info[i]), 5, color, -1)
 
 
 class adaptativeGain:
@@ -381,7 +392,7 @@ def r2E(R: np.ndarray) -> np.ndarray:
     @ Returns
         np.ndarray -> Euler angles
     """
-        # double roll = 0, pitch = 0, yaw = 0;
+    # double roll = 0, pitch = 0, yaw = 0;
     #     if (R.at<double>(2, 0) < 1)
     #     {
     #             if (R.at<double>(2, 0) > -1)
@@ -421,6 +432,7 @@ def r2E(R: np.ndarray) -> np.ndarray:
         yaw = 0
 
     return np.array([roll, pitch, yaw])
+
 
 def decorator_timer(function):
     """

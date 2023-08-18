@@ -116,6 +116,8 @@ class BearingOnly:
         self.Qis = []
         self.lastYaw = None
 
+        self.toAngles = [[], [], []]
+
     def __name__(self) -> str:
         if self.yaml["control"] == 1:
             return "BearingOnly (-P_gij * gij*)"
@@ -386,24 +388,54 @@ class BearingOnly:
             if len(tries) == 0:
                 return -1
             elif len(tries) == 1:
-                self.lastYaw = r2E(tries[0][0])[1]
+                angles = r2E(tries[0][0])
+                self.lastYaw = angles[1]
             else:
                 if self.lastYaw is None:
                     if tries[0][2][2] > tries[1][2][2]:
-                        self.lastYaw = r2E(tries[0][0])[1]
+                        angles = r2E(tries[0][0])
+                        self.lastYaw = angles[1]
                     else:
-                        self.lastYaw = r2E(tries[1][0])[1]
+                        angles = r2E(tries[1][0])
+                        self.lastYaw = angles[1]
                 else:
                     # if tries[0][2][2] < tries[1][2][2]:
-                    if abs(self.lastYaw - r2E(tries[0][0])[1]) < abs(
-                        self.lastYaw - r2E(tries[1][0])[1]
+                    if abs(self.lastYaw - (angles1:=r2E(tries[0][0]))[1]) < abs(
+                        self.lastYaw - (angles2:=r2E(tries[1][0]))[1]
                     ):
-                        self.lastYaw = r2E(tries[0][0])[1]
+                        angles = angles1
+                        self.lastYaw = angles[1]
                     else:
-                        self.lastYaw = r2E(tries[1][0])[1]
+                        angles = angles2
+                        self.lastYaw = angles2[1]
 
             self.Qi.append(e2R(0, self.lastYaw, 0))
+            self.toAngles[0].append(self.actualTime)
+            angles = np.append(angles, self.lastYaw)
+            if index == 0:
+                self.toAngles[1].append(angles)
+            if index == 1:
+                self.toAngles[2].append(angles)
+
+            # print(
+            #     self.toAngles[0][-1],
+            #     self.toAngles[1][-1],
+            #     self.toAngles[2][-1],
+            #     sep="\t",
+            # )
+
+            # if len(tries) == 0:
+            #     return -1
+            # elif len(tries) == 1:
+            #     self.Qi.append(tries[0][0])
+            # else:
+            #     if tries[0][2][2] > tries[1][2][2]:
+            #         self.Qi.append(tries[0][0])
+            #     else:
+            #         self.Qi.append(tries[1][0])
+
         self.Qi = np.array(self.Qi, dtype=np.float32)
+        print("[INFO] Homographies calculated\n")
         return 0
 
     def save(self):
@@ -485,6 +517,10 @@ class BearingOnly:
             self.file_int.close()
         except ValueError as e:
             print("[ERROR] Error closing files >> ", e)
+        
+        np.savetxt(PATH / "out" / f"drone_{self.drone_id}_toAnglesTime.txt", self.toAngles[0])
+        np.savetxt(PATH / "out" / f"drone_{self.drone_id}_toAngles1.txt", self.toAngles[1])
+        np.savetxt(PATH / "out" / f"drone_{self.drone_id}_toAngles2.txt", self.toAngles[2])
 
 
 if __name__ == "__main__":
