@@ -243,17 +243,34 @@ class BearingOnly:
             self.save()
             return self.input
 
-        if self.yaml["control"] in (4, 5, 6):
-            print("[INFO] Calculating homographies [Qi]\n")
-            if self.homography() < 0:
-                print("[ERROR] Homographies could not be calculated")
-                self.input = np.zeros((6,))
-                self.save()
-                return self.input
-
         U = np.zeros((3, 1))
         Uw = np.zeros((3, 3))
         for index in range(self.actualData.bearings.shape[0]):
+            ##############################################
+            if self.yaml["control"] in (4, 5, 6):
+                H = findHomography(
+                    self.desiredData.feature[4 * index : 4 * index + 4],
+                    self.actualData.feature[4 * index : 4 * index + 4],
+                )
+                H = (
+                    self.yaml["inv_camera_intrinsic_parameters"]
+                    @ H
+                    @ self.yaml["camera_intrinsic_parameters"]
+                )
+                self.Qi[index], _, _ = H2Rt(H)
+                Uw += self.Qi[index].T - self.Qi[index]
+
+                print(
+                    f"""----------------------------------------
+  Actual {index+1}   -> {self.actualData.bearings[index]}
+  Desired {index+1}  -> {self.desiredData.bearings[index]}
+  Q{index+1}T (deg)  => {np.rad2deg(r2E(self.Qi[index].T))}
+  Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
+"""
+                )
+
+            ##############################################
+
             if self.yaml["control"] == 1:
                 temp = (
                     -ortoProj(self.actualData.bearings[index])
@@ -273,6 +290,7 @@ class BearingOnly:
             elif self.yaml["control"] == 4:
                 temp = (
                     -ortoProj(self.actualData.bearings[index])
+                    @ ((np.eye(3) + self.Qi[index]) / 2)
                     @ self.desiredData.bearings[index]
                 )
 
@@ -290,24 +308,13 @@ class BearingOnly:
                 )
 
             U += temp.reshape(-1, 1)
-            if self.yaml["control"] in (4, 5, 6):
-                Uw += -(self.Qi[index].T - self.Qi[index])
 
-                print(
-                    f"""----------------------------------------
-  Actual {index+1}   -> {self.actualData.bearings[index]}
-  Desired {index+1}  -> {self.desiredData.bearings[index]}
-  Q{index+1}T (deg)  => {np.rad2deg(r2E(self.Qi[index].T))}
-  Q{index+1} (deg)   => {np.rad2deg(r2E(self.Qi[index]))}
-"""
-                )
-            else:
-                print(
-                    f"""----------------------------------------
+            print(
+                f"""----------------------------------------
   Actual {index+1}   -> {self.actualData.bearings[index]}
   Desired {index+1}  -> {self.desiredData.bearings[index]}
 """
-                )
+            )
 
         # Q{index+1}T @ gij  => {self.Qi[index].T @ self.actualData.bearings[index]}
         # Q{index+1} @ gij   => {self.Qi[index] @ self.actualData.bearings[index]}
@@ -363,80 +370,6 @@ class BearingOnly:
 
         self.save()
         return self.input
-
-    def homography(self) -> int:
-        self.Qi = []
-        for index in range(self.actualData.bearings.shape[0]):
-            H = cv2.findHomography(
-                self.desiredData.feature[4 * index : 4 * index + 4],
-                self.actualData.feature[4 * index : 4 * index + 4],
-            )[0]
-
-            if H is None:
-                print("[ERROR] Homography could not be calculated")
-                return -1
-
-            num, Rs, Ts, Ns = cv2.decomposeHomographyMat(
-                H, self.yaml["camera_intrinsic_parameters"]
-            )
-
-            tries = []
-            for i in range(num):
-                if Ns[i][2] > 0:
-                    tries.append([Rs[i], Ts[i], Ns[i]])
-
-            if len(tries) == 0:
-                return -1
-            elif len(tries) == 1:
-                angles = r2E(tries[0][0])
-                self.lastYaw = angles[1]
-            else:
-                if self.lastYaw is None:
-                    if tries[0][2][2] > tries[1][2][2]:
-                        angles = r2E(tries[0][0])
-                        self.lastYaw = angles[1]
-                    else:
-                        angles = r2E(tries[1][0])
-                        self.lastYaw = angles[1]
-                else:
-                    # if tries[0][2][2] < tries[1][2][2]:
-                    if abs(self.lastYaw - (angles1:=r2E(tries[0][0]))[1]) < abs(
-                        self.lastYaw - (angles2:=r2E(tries[1][0]))[1]
-                    ):
-                        angles = angles1
-                        self.lastYaw = angles[1]
-                    else:
-                        angles = angles2
-                        self.lastYaw = angles2[1]
-
-            self.Qi.append(e2R(0, self.lastYaw, 0))
-            self.toAngles[0].append(self.actualTime)
-            angles = np.append(angles, self.lastYaw)
-            if index == 0:
-                self.toAngles[1].append(angles)
-            if index == 1:
-                self.toAngles[2].append(angles)
-
-            # print(
-            #     self.toAngles[0][-1],
-            #     self.toAngles[1][-1],
-            #     self.toAngles[2][-1],
-            #     sep="\t",
-            # )
-
-            # if len(tries) == 0:
-            #     return -1
-            # elif len(tries) == 1:
-            #     self.Qi.append(tries[0][0])
-            # else:
-            #     if tries[0][2][2] > tries[1][2][2]:
-            #         self.Qi.append(tries[0][0])
-            #     else:
-            #         self.Qi.append(tries[1][0])
-
-        self.Qi = np.array(self.Qi, dtype=np.float32)
-        print("[INFO] Homographies calculated\n")
-        return 0
 
     def save(self):
         self.actualTime = time.time() - self.initTime
@@ -517,10 +450,16 @@ class BearingOnly:
             self.file_int.close()
         except ValueError as e:
             print("[ERROR] Error closing files >> ", e)
-        
-        np.savetxt(PATH / "out" / f"drone_{self.drone_id}_toAnglesTime.txt", self.toAngles[0])
-        np.savetxt(PATH / "out" / f"drone_{self.drone_id}_toAngles1.txt", self.toAngles[1])
-        np.savetxt(PATH / "out" / f"drone_{self.drone_id}_toAngles2.txt", self.toAngles[2])
+
+        np.savetxt(
+            PATH / "out" / f"drone_{self.drone_id}_toAnglesTime.txt", self.toAngles[0]
+        )
+        np.savetxt(
+            PATH / "out" / f"drone_{self.drone_id}_toAngles1.txt", self.toAngles[1]
+        )
+        np.savetxt(
+            PATH / "out" / f"drone_{self.drone_id}_toAngles2.txt", self.toAngles[2]
+        )
 
 
 if __name__ == "__main__":

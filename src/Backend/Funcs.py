@@ -474,3 +474,129 @@ def angleVectors(u: np.ndarray, v: np.ndarray) -> float:
         float -> Angle between the vectors
     """
     return np.arccos(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v)))
+
+
+def findHomography(desiredPoints: np.ndarray, actualPoints: np.ndarray) -> np.ndarray:
+    """
+    Calculate the homography matrix
+
+    @ Parameters
+        desiredPoints: np.ndarray -> Points in the desired image
+        actualPoints: np.ndarray -> Points in the actual image
+
+    @ Returns
+        np.ndarray -> Homography matrix
+    """
+
+    mean = np.mean(desiredPoints, axis=0)
+    maxstd = max(np.std(desiredPoints, axis=0)) + 1e-9
+    C1 = np.diag([1 / maxstd, 1 / maxstd, 1])
+    C1[0, 2] = -mean[0] / maxstd
+    C1[1, 2] = -mean[1] / maxstd
+    desiredPoints = np.hstack([desiredPoints, np.ones((desiredPoints.shape[0], 1))])
+    desiredPoints = (C1 @ desiredPoints.T).T
+
+    mean = np.mean(actualPoints, axis=0)
+    maxstd = max(np.std(actualPoints, axis=0)) + 1e-9
+    C2 = np.diag([1 / maxstd, 1 / maxstd, 1])
+    C2[0, 2] = -mean[0] / maxstd
+    C2[1, 2] = -mean[1] / maxstd
+    actualPoints = np.hstack([actualPoints, np.ones((actualPoints.shape[0], 1))])
+    actualPoints = (C2 @ actualPoints.T).T
+
+    nbr_correspondences = actualPoints.shape[0]
+    A = np.zeros((2 * nbr_correspondences, 9))
+    for i in range(nbr_correspondences):
+        A[2 * i] = [
+            desiredPoints[i, 0],
+            desiredPoints[i, 1],
+            1,
+            0,
+            0,
+            0,
+            -actualPoints[i, 0] * desiredPoints[i, 0],
+            -actualPoints[i, 0] * desiredPoints[i, 1],
+            -actualPoints[i, 0],
+        ]
+        A[2 * i + 1] = [
+            0,
+            0,
+            0,
+            desiredPoints[i, 0],
+            desiredPoints[i, 1],
+            1,
+            -actualPoints[i, 1] * desiredPoints[i, 0],
+            -actualPoints[i, 1] * desiredPoints[i, 1],
+            -actualPoints[i, 1],
+        ]
+
+    try:
+        U, S, V = np.linalg.svd(A)
+    except Exception as e:
+        print(f"[ERROR] Cannot calculate the homography matrix >> {e}")
+        return None
+
+    H = V[8].reshape((3, 3))
+    H = np.linalg.inv(C2) @ H @ C1
+
+    return H / H[2, 2]
+
+
+def H2Rt(H: np.ndarray) -> tuple:
+    """
+    Decompose the homography matrix in R, t, and n  
+    
+    @ Parameters
+        H: np.ndarray -> Homography matrix
+
+    @ Returns
+        tuple -> (R: np.ndarray, t: np.ndarray, n: np.ndarray)
+    """
+    try:
+        U, S, V = np.linalg.svd(H, full_matrices=True)
+
+        s1 = S[0] / S[1]
+        s3 = S[2] / S[1]
+
+        zeta = s1 - s3
+
+        a1 = np.sqrt(1 - s3**2)
+        b1 = np.sqrt(s1**2 - 1)
+
+        a, b = normalize([a1, b1])
+        c, d = normalize([1 + s1 * s3, a1 * b1])
+        e, f = normalize([-b / s1, -a / s3])
+
+
+        V1 = V[0]
+        V3 = V[2]
+
+        n1 = b * V1 - a * V3
+        n2 = b * V1 + a * V3
+
+        R1 = U @ np.array([[c, 0, d], [0, 1, 0], [-d, 0, c]]) @ V
+        R2 = U @ np.array([[c, 0, -d], [0, 1, 0], [d, 0, c]]) @ V
+
+        t1 = e * V1 + f * V3
+        t2 = -e * V1 + f * V3
+
+        if n1[2] < 0:
+            n1 = -n1
+            t1 = -t1
+        if n2[2] < 0:
+            n2 = -n2
+            t2 = -t2
+
+        if n1[2] > n2[2]:
+            R = R1.T
+            t = zeta * t1
+            n = n1
+        else:
+            R = R2.T
+            t = zeta * t2
+            n = n2
+        return R, t, n
+        
+    except Exception as e:
+        print(f"[ERROR] Cannot decompose the homography matrix >> {e}")
+        return (None, None, None)
