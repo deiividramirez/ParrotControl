@@ -1,10 +1,10 @@
-from flask.scaffold import F
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
 import time
-import cv2
+
+# import cv2
 import os
 
 plt.rcParams["figure.autolayout"] = True
@@ -360,7 +360,7 @@ def r2E(R: np.ndarray) -> np.ndarray:
         yaw = np.arctan2(-R[1, 2], R[1, 1])
 
     return np.array([roll, pitch, yaw])
-    
+
     # if R[2, 0] < 0.995:
     #     # if R[2,0] > -1.0:
     #     if R[2, 0] > -0.995:
@@ -591,7 +591,7 @@ def homography(desiredPoints: np.ndarray, actualPoints: np.ndarray) -> np.ndarra
     return H / H[2, 2]
 
 
-def H2Rt(H: np.ndarray) -> tuple:
+def H2Rt(H: np.ndarray, lastRot: np.ndarray) -> np.ndarray:
     # print(f"H: {H}")
     U, S, V = np.linalg.svd(H, full_matrices=True)
     # print(f"U: {U}, S: {S}, V: {V}")
@@ -635,16 +635,29 @@ def H2Rt(H: np.ndarray) -> tuple:
         n2 = -n2
         t2 = -t2
 
-    if n1[2] > n2[2]:
-        R = R1.T
-        t = zeta * t1
-        n = n1
+    if lastRot is None:
+        if n1[2] > n2[2]:
+            R = R1.T
+            t = zeta * t1
+            n = n1
+        else:
+            R = R2.T
+            t = zeta * t2
+            n = n2
+        lastRot = R
     else:
-        R = R2.T
-        t = zeta * t2
-        n = n2
-    # print("R1", R1.T)
-    # print("R2", R2.T)
+        if np.linalg.norm(r2E(lastRot) - r2E(R1.T)) < np.linalg.norm(r2E(lastRot) - r2E(R2.T)):
+            R = R1.T
+            t = zeta * t1
+            n = n1
+        else:
+            R = R2.T
+            t = zeta * t2
+            n = n2
+        lastRot = R
+    # print(f"R1 {R1.T} - {np.rad2deg(r2E(R1.T))}")
+    # print(f"R2 {R2.T} - {np.rad2deg(r2E(R2.T))}")
+    # print(f"R {R} - {np.rad2deg(r2E(R))}")
     return R
 
 
@@ -653,6 +666,7 @@ def bearingControl(
     desired: Data,
     K: np.ndarray,
     Kinv: np.ndarray,
+    lastRot: np.ndarray,
     control: int = 1,
     toplot: list = None,
 ) -> np.ndarray:
@@ -682,7 +696,7 @@ def bearingControl(
 
         He = Kinv @ H @ K
 
-        R = H2Rt(He)
+        R = H2Rt(He, lastRot)
 
         # num, Rs, Ts, Ns = cv2.decomposeHomographyMat(H, K)
         # tries = [(Rs[i], Ts[i], Ns[i]) for i in range(num) if Ns[i][2] > 0]
@@ -706,7 +720,7 @@ def bearingControl(
         U -= (
             ortoProj(actual.bearings[index]) @ (np.eye(3) + R) @ desired.bearings[index]
         )
-        v += (R.T - R)
+        v += R.T - R
         # print(
         #     f"\n>>first: {actual.bearings[index]} ||: {np.linalg.norm(actual.bearings[index])}",
         #     f"second: {desired.bearings[index]} ||: {np.linalg.norm(desired.bearings[index])}",
@@ -776,3 +790,77 @@ def summaryPlot(
         ax[3].set_title("Integral")
 
     [i.set_xlabel("Time [s]") for i in ax]
+
+def animation(
+    time: np.ndarray,
+    pose: np.ndarray,
+    error: np.ndarray,
+    errorPix: np.ndarray,
+    inputControl: np.ndarray,
+    integral: np.ndarray = None,
+    fig: plt.Figure = None,
+    ax: plt.Axes = None,
+) -> None:
+    [i.autoscale(enable=True, axis="both", tight=False) for i in ax]
+
+    # time vs pose
+    ax[0].plot(time, pose, label=("$x$", "$y$", "$z$", "$roll$", "$pitch$", "$yaw$"))
+    ax[0].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    ax[0].set_ylabel("Pose")
+    ax[0].set_title("Pose")
+
+    # time vs inputControl
+    ax[1].plot(
+        time, inputControl, label=("$V_x$", "$V_y$", "$V_z$", "$W_x$", "$W_y$", "$W_z$")
+    )
+    ax[1].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    ax[1].set_ylabel("Input control")
+    ax[1].set_title("Input control")
+
+    # time vs error
+    ax[2].plot(
+        time,
+        error,
+        label=(
+            "Error x (c)",
+            "Error y (c)",
+            "Error z (c)",
+            "Error roll (c)",
+            "Error pitch (c)",
+            "Error yaw (c)",
+        )
+        if len(error.shape) > 1
+        else ("Error (c)"),
+    )
+    ax[2].plot(time, errorPix, label="Error (px)")
+    ax[2].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    ax[2].set_ylabel("Errors")
+    ax[2].set_title("Errors")
+
+    # time vs errorPix
+
+    if integral is not None:
+        # time vs integral
+        ax[3].plot(time, integral, label=("Vx", "Vy", "Vz", "Wx", "Wy", "Wz"))
+        ax[3].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+        ax[3].set_ylabel("Integral")
+        ax[3].set_title("Integral")
+
+    [i.set_xlabel("Time [s]") for i in ax]
+
+def animation3D(
+        cameraDesired,
+        camera,
+        actual_pose: np.ndarray,
+        fig: plt.Figure = None,
+        ax: plt.Axes = None,
+) -> None:
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_aspect("equal")
+
+    ax.set_title("3D Plot")
+    camera.set_position(*actual_pose)
+    camera.draw_camera(ax, "b", scale=0.2)
+    cameraDesired.draw_camera(ax, "r", scale=0.2)

@@ -248,16 +248,18 @@ class BearingOnly:
         for index in range(self.actualData.bearings.shape[0]):
             ##############################################
             if self.yaml["control"] in (4, 5, 6):
+
                 H = findHomography(
                     self.desiredData.feature[4 * index : 4 * index + 4],
                     self.actualData.feature[4 * index : 4 * index + 4],
                 )
-                H = (
+                print(f"H: {H}")
+                He = (
                     self.yaml["inv_camera_intrinsic_parameters"]
                     @ H
                     @ self.yaml["camera_intrinsic_parameters"]
                 )
-                self.Qi[index], _, _ = H2Rt(H)
+                self.Qi[index], _, _ = H2Rt(He)
                 Uw += self.Qi[index].T - self.Qi[index]
 
                 print(

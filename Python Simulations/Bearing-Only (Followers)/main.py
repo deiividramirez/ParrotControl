@@ -19,6 +19,7 @@ from CameraModels.PlanarCamera import PlanarCamera
 from Utils.ImageJacobian import ImageJacobian
 from Funcs import *
 
+
 POINTS = np.loadtxt(f"{MAIN_PATH}/points.txt")
 PLOTTING3D = Plotting3D()
 PICTURE = PlottingImage((0, 640), (0, 480))
@@ -94,6 +95,8 @@ angular_velocity = np.zeros((3, 1))
 linear_integral = np.zeros((6, 1))
 U = np.zeros((6, 1))
 
+lastR = None
+
 # Error
 error = np.zeros((6, 1))
 error_norm = 0
@@ -119,8 +122,8 @@ KV[:3, :3] = kp * I3
 KV[3:, 3:] = kw * I3
 
 KI = ki * np.eye(6)
-# KI[:3, :3] = ki * I3
-# KI[3:, 3:] = 0 * I3
+KI[:3, :3] = ki * I3
+KI[3:, 3:] = 0 * I3
 
 actual_pose = np.array(
     [
@@ -153,7 +156,7 @@ for t in range(time.shape[0]):
     # print(f"Desired bearings: {DESIRED_DATA.bearings}")
 
     error_control = bearingControl(
-        ACTUAL_DATA, DESIRED_DATA, ACTUAL_K, ACTUAL_K_inv, CONTROL, toplot
+        ACTUAL_DATA, DESIRED_DATA, ACTUAL_K, ACTUAL_K_inv, lastR, CONTROL, toplot
     )
     error_norm = np.linalg.norm(error_control)
     error_pix = ACTUAL_DATA.inNormalPlane - DESIRED_DATA.inNormalPlane
@@ -205,14 +208,37 @@ PLOTTING3D.trajectory(pose[:END], color="b", label="Actual position")
 
 PICTURE.trajectory(imageTrajectory[:END], color="b")
 
-summaryPlot(
-    time[:END],
-    controlInput[:END],
-    pose[:END],
-    errorArray[:END],
-    errorPixArray[:END],
-    integralArray[:END],
-)
+# fig, ax = plt.subplots(4, 1, sharex=True)
+# ax = ax.flatten()
+# for i in range(0, time.shape[0], 10):
+#     [i.cla() for i in ax]
+    # animation(
+    #     time[: i + 1],
+    #     controlInput[: i + 1],
+    #     pose[: i + 1],
+    #     errorArray[: i + 1],
+    #     errorPixArray[: i + 1],
+    #     integralArray[: i + 1],
+    #     fig,
+    #     ax,
+    # )
+    # plt.pause(0.001)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection="3d")
+ax.autoscale(enable=True, axis="both", tight=True)
+for i in range(0, time.shape[0]-1, 2):
+    ax.cla()
+    animation3D(DESIRED_CAMERA, ACTUAL_CAMERA, pose[i], fig, ax)
+    plt.pause(0.001)
+# summaryPlot(
+#     time[:END],
+#     controlInput[:END],
+#     pose[:END],
+#     errorArray[:END],
+#     errorPixArray[:END],
+#     integralArray[:END],
+# )
 
 fig, ax = plt.subplots(2, 1, sharex=True)
 for index in range(DESIRED_DATA.bearings.shape[0]):

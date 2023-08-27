@@ -1,7 +1,8 @@
 {
   "python.analysis.extraPaths": [
     "./src/Backend",
-    "./pyparrot"
+    "./pyparrot",
+    "./Python Simulations/"
   ],
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"
