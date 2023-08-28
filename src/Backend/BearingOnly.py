@@ -1,8 +1,8 @@
 from pathlib import Path
 import numpy as np
-import math
 import time
 import cv2
+
 
 PATH = Path(__file__).parent.absolute().parent.absolute().parent.absolute()
 
@@ -81,7 +81,6 @@ class BearingOnly:
         self.Qi = np.array([np.eye(3) for _ in range(n)])
 
         self.integral = np.zeros((3, 1))
-        self.integralTime = time.time()
 
         self.gain_v_kp = adaptativeGain(
             self.yaml["gain_v_kp_ini"],

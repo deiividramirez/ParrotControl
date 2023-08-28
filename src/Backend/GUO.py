@@ -54,6 +54,8 @@ class GUO:
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
+        self.modeChange = False
+
         n = len(self.yaml["seguimiento"])
         quant = lambda n: (n * 4 - 1) * n * 4 // 2
         if n not in (1, 4):
@@ -105,7 +107,6 @@ class GUO:
         self.file_v_kp = open(PATH / "out" / f"drone_{drone_id}_v_kp.txt", "w+")
         self.file_v_ki = open(PATH / "out" / f"drone_{drone_id}_v_ki.txt", "w+")
         self.file_w_kp = open(PATH / "out" / f"drone_{drone_id}_w_kp.txt", "w+")
-        # self.file_w_ki = open(PATH / "out" / f"drone_{drone_id}_w_ki.txt", "w+")
         self.file_int = open(PATH / "out" / f"drone_{drone_id}_int.txt", "w+")
 
         # self.save()
@@ -140,7 +141,7 @@ class GUO:
 
         if len(self.yaml["seguimiento"]) == 4:
             self.desiredData.feature = np.array(
-                [self.desiredData.feature[i].copy() for i in [0, 5, 9, 14]]
+                [self.desiredData.feature[i].copy() for i in [1, 4, 10, 13]]
             )
 
         self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
@@ -178,7 +179,7 @@ class GUO:
 
         if len(self.yaml["seguimiento"]) == 4:
             self.actualData.feature = np.array(
-                [self.actualData.feature[i] for i in [0, 5, 9, 14]]
+                [self.actualData.feature[i] for i in [1, 4, 10, 13]]
             )
 
         self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
@@ -210,6 +211,11 @@ class GUO:
           vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
         """
         self.actualImage = actualImage
+
+        if self.errorNorm < self.yaml["error_threshold"] and not self.modeChange:
+            print("[INFO] Changing mode")
+            # self.modeChange = True
+            # self.changeMode()
 
         if self.getActualData(actualImage, imgAruco) < 0:
             print("[ERROR] Some ArUco's were not found")
@@ -283,6 +289,9 @@ class GUO:
 
         except ValueError as e:
             print("[ERROR] Error writing in file: ", e)
+    
+    def changeMode(self):
+        pass
 
     def rotationControl(self) -> np.ndarray:
         """

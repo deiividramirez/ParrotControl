@@ -226,7 +226,7 @@ class UserVision:
                         f"{Fore.BLUE}Total time: {time.time() - initialTIME}{Style.RESET_ALL}"
                     )
                     while (time.time() - initialTIME < 0.0325) and (not self.clicked):
-                        time.sleep(0.00005)
+                        time.sleep(0.00001)
 
         except Exception as e:
             print(f"{Fore.RED}[ERROR] {e}\n>> Closing program...{Style.RESET_ALL}")
