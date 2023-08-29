@@ -47,16 +47,31 @@ class GUO:
           None
 
         """
-        self.img_desired = img_desired
-        self.img_desired2 = img_desired2
-        self.img_desired_gray = cv2.cvtColor(img_desired, cv2.COLOR_BGR2GRAY)
+        self.img1 = img_desired
+        self.img2 = img_desired2
+
         self.drone_id = drone_id
         self.rotAndTrans = RT
         self.yaml = load_yaml(PATH, drone_id)
 
         self.modeChange = False
+        self.useKLT = False
+        self.firstKLT = True
+        self.ORB = cv2.ORB_create(
+            nfeatures=1500,
+            scoreType=cv2.ORB_FAST_SCORE,
+            scaleFactor=1.0,
+            nlevels=2,
+            edgeThreshold=31,
+            patchSize=31,
+            fastThreshold=21,
+        )
+        # self.MATCHER = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        # brute force matcher
+        self.MATCHER = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        self.followTo = self.yaml["seguimiento"]
 
-        n = len(self.yaml["seguimiento"])
+        n = len(self.followTo)
         quant = lambda n: (n * 4 - 1) * n * 4 // 2
         if n not in (1, 4):
             raw = input(
@@ -72,11 +87,23 @@ class GUO:
             f"[INFO] Control law {'1/dist' if self.yaml['control'] == 1 else 'dist'} with {quant(n)} distances\n"
         )
 
+        self.img_desired = self.img2
+        self.img_desired_gray = cv2.cvtColor(self.img2, cv2.COLOR_BGR2GRAY)
+        self.followTo = self.yaml["seguimiento2"]
         if self.getDesiredData() < 0:
-            print("Desired ArUco not found")
+            print(f"Desired ArUco with IDs {self.followTo} not found for second phase...")
+            exit()
+
+        self.img_desired = self.img1
+        self.img_desired_gray = cv2.cvtColor(self.img1, cv2.COLOR_BGR2GRAY)
+        self.followTo = self.yaml["seguimiento"]
+        if self.getDesiredData() < 0:
+            print(f"Desired ArUco with IDs {self.followTo} not found for first phase...")
             exit()
 
         self.storeImage = None
+        self.lastImage = None
+
         self.initTime = time.time()
         self.actualTime = 0
         self.error = np.zeros((1, 6))
@@ -126,30 +153,62 @@ class GUO:
           int -> A flag to know if the aruco was found or not
         """
         self.desiredData = desiredData()
-        temp = get_aruco(self.img_desired_gray, 4)
+        if not self.useKLT:
+            temp = get_aruco(self.img_desired_gray, 4)
 
-        for seg in self.yaml["seguimiento"]:
-            if temp[1] is not None and seg in temp[1]:
-                index = np.argwhere(temp[1] == seg)[0][0]
-                self.desiredData.feature.append(temp[0][index][0])
-            else:
-                print("ArUco not found")
-                return -1
-        self.desiredData.feature = np.array(
-            self.desiredData.feature, dtype=np.int32
-        ).reshape(-1, 2)
-
-        if len(self.yaml["seguimiento"]) == 4:
+            for seg in self.followTo:
+                if temp[1] is not None and seg in temp[1]:
+                    index = np.argwhere(temp[1] == seg)[0][0]
+                    self.desiredData.feature.append(temp[0][index][0])
+                else:
+                    print("ArUco not found")
+                    return -1
             self.desiredData.feature = np.array(
-                [self.desiredData.feature[i].copy() for i in [1, 4, 10, 13]]
+                self.desiredData.feature, dtype=np.int32
+            ).reshape(-1, 2)
+
+            if len(self.followTo) == 4:
+                self.desiredData.feature = np.array(
+                    [self.desiredData.feature[i].copy() for i in [1, 4, 10, 13]]
+                )
+
+            self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
+                self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
             )
 
-        self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
-            self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
-        )
+            self.desiredData.draw = self.desiredData.feature.copy()
 
-        self.desiredData.draw = self.desiredData.feature.copy()
+        else:
+            # get the points from the image with 200 pixels of left, right, up and down mask for the ORB
+            self.mask = np.zeros(self.img_desired_gray.shape, np.uint8)
+            self.rectangle = (
+                200,
+                200,
+                self.img_desired_gray.shape[1] - 200,
+                self.img_desired_gray.shape[0] - 200,
+            )
+            self.mask[
+                self.rectangle[1] : self.rectangle[3],
+                self.rectangle[0] : self.rectangle[2],
+            ] = 255
 
+            kp1, des1 = self.ORB.detectAndCompute(self.img_desired, mask=self.mask)
+            self.desiredData.keypoints = np.array(
+                [kp.pt for kp in kp1], dtype=np.int32
+            ).reshape(-1, 2)
+            self.desiredData.descriptor = des1
+
+            # # draw the keypoints as points
+            # self.desiredData.draw = cv2.drawKeypoints(
+            #     self.img_desired,
+            #     kp1,
+            #     (0, 255, 0),
+            #     flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS,
+            # )
+
+            # cv2.namedWindow("Desired", cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow("Desired", 640, 480)
+            # cv2.imshow("Desired", self.desiredData.draw)
         return 0
 
     def getActualData(self, actualImage: np.ndarray, imgAruco: tuple) -> int:
@@ -164,29 +223,90 @@ class GUO:
           int -> A flag to know if the aruco was found or not
         """
         self.actualData = actualData()
-        # imgAruco = get_aruco(actualImage)
 
-        for seg in self.yaml["seguimiento"]:
-            if imgAruco[1] is not None and seg in imgAruco[1]:
-                index = np.argwhere(imgAruco[1] == seg)[0][0]
-                self.actualData.feature.append(imgAruco[0][index][0])
-            else:
-                # print("ArUco not found")
-                return -1
-        self.actualData.feature = np.array(
-            self.actualData.feature, dtype=np.int32
-        ).reshape(-1, 2)
-
-        if len(self.yaml["seguimiento"]) == 4:
+        if not self.useKLT:
+            for seg in self.followTo:
+                if imgAruco[1] is not None and seg in imgAruco[1]:
+                    index = np.argwhere(imgAruco[1] == seg)[0][0]
+                    self.actualData.feature.append(imgAruco[0][index][0])
+                else:
+                    # print("ArUco not found")
+                    return -1
             self.actualData.feature = np.array(
-                [self.actualData.feature[i] for i in [1, 4, 10, 13]]
+                self.actualData.feature, dtype=np.int32
+            ).reshape(-1, 2)
+
+            if len(self.followTo) == 4:
+                self.actualData.feature = np.array(
+                    [self.actualData.feature[i] for i in [1, 4, 10, 13]]
+                )
+
+            self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
+                self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
             )
 
-        self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
-            self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
-        )
+            self.actualData.draw = self.actualData.feature.copy()
+        else:
+            kp2, des2 = self.ORB.detectAndCompute(actualImage, mask=self.mask)
+            self.actualData.keypoints = np.array(
+                [kp.pt for kp in kp2], dtype=np.int32
+            ).reshape(-1, 2)
+            self.actualData.descriptor = des2
 
-        self.actualData.draw = self.actualData.feature.copy()
+            # # draw the keypoints as points
+            # self.actualData.draw = cv2.drawKeypoints(
+            #     actualImage,
+            #     kp2,
+            #     (0, 255, 0),
+            #     flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS,
+            # )
+
+            # cv2.namedWindow("Actual", cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow("Actual", 640, 480)
+            # cv2.imshow("Actual", self.actualData.draw)
+
+            # Match descriptors.
+            matches = self.MATCHER.match(
+                self.actualData.descriptor, self.desiredData.descriptor
+            )
+
+            # # Sort them in the order of their distance.
+            # matches = sorted(matches, key=lambda x: x.distance)
+            # print("Matches: ", len(matches))
+            # # Draw first all the matches.
+            # self.actualData.draw = cv2.drawMatches(
+            #     actualImage,
+            #     kp2,
+            #     self.img_desired,
+            #     kp2,
+            #     matches[:10],
+            #     None,
+            #     flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS,
+            # )
+
+            # # show matches in 640x480 window
+            # cv2.namedWindow("matches", cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow("matches", 640, 480)
+            # cv2.imshow("matches", self.actualData.draw)
+            # cv2.waitKey(0)
+
+            # Get the points from the matches
+            (
+                self.desiredData.feature,
+                self.actualData.feature,
+            ) = self.getFeatureFromMatches(
+                self.desiredData.keypoints, self.actualData.keypoints, matches
+            )
+
+            self.actualData.inSphere, self.actualData.inNormalPlane = sendToSphere(
+                self.actualData.feature, self.yaml["inv_camera_intrinsic_parameters"]
+            )
+
+            self.desiredData.inSphere, self.desiredData.inNormalPlane = sendToSphere(
+                self.desiredData.feature, self.yaml["inv_camera_intrinsic_parameters"]
+            )
+
+            exit()
 
         if self.firstRun:
             self.t0L = self.actualTime
@@ -211,11 +331,6 @@ class GUO:
           vels: np.ndarray -> A (6x1) array for the velocities of the drone in the drone's frame
         """
         self.actualImage = actualImage
-
-        if self.errorNorm < self.yaml["error_threshold"] and not self.modeChange:
-            print("[INFO] Changing mode")
-            # self.modeChange = True
-            # self.changeMode()
 
         if self.getActualData(actualImage, imgAruco) < 0:
             print("[ERROR] Some ArUco's were not found")
@@ -264,6 +379,12 @@ class GUO:
             print("Input  after %: ", self.input)
 
         self.save()
+
+        if self.errorPix < self.yaml["error_threshold"] and not self.modeChange:
+            print("[INFO] Changing mode", "=="*25)
+            self.changeMode()
+            self.modeChange = True
+        
         return self.input
 
     def save(self):
@@ -271,7 +392,7 @@ class GUO:
         try:
             self.input.tofile(self.file_input, sep="\t", format="%s")
             self.file_input.write("\n")
-            
+
             self.file_time.write(f"{self.actualTime}\n")
             self.file_errorPix.write(f"{self.errorPix}\n")
             self.file_error.write(f"{self.errorNorm}\n")
@@ -289,9 +410,89 @@ class GUO:
 
         except ValueError as e:
             print("[ERROR] Error writing in file: ", e)
-    
+
     def changeMode(self):
-        pass
+        # self.useKLT = True
+        if not self.modeChange:
+            self.img_desired = self.img2
+            self.img_desired_gray = cv2.cvtColor(self.img2, cv2.COLOR_BGR2GRAY)
+            self.followTo = self.yaml["seguimiento2"]
+            if self.getDesiredData() < 0:
+                print(">>>> Points were not refreshed...")
+                self.img_desired = self.img1
+                self.img_desired_gray = cv2.cvtColor(self.img1, cv2.COLOR_BGR2GRAY)
+                self.followTo = self.yaml["seguimiento"]
+                self.getDesiredData()
+            else:
+                self.modeChange = True
+                self.t0L = self.actualTime
+                self.tfL = self.t0L + 1
+                print(">>>> Mode changed")
+            
+
+
+    def getFeatureFromMatches(
+        self, desiredKeypoints: np.ndarray, actualKeypoints: np.ndarray, matches: list
+    ) -> tuple:
+        """
+        This function returns the feature from the matches between the actual and desired images
+
+        @Params:
+            desiredKeypoints: np.ndarray -> A (n,2) matrix with the desired keypoints
+            actualKeypoints: np.ndarray -> A (n,2) matrix with the actual keypoints
+            matches: list -> A list with the matches between the actual and desired keypoints
+
+        @Returns:
+            tuple -> A tuple with the desired and actual features (4, 2) matrices
+
+        """
+        corners = np.array([[0, 0], [1920, 0], [1920, 1080], [0, 1080]])
+        desiredFeatures = []
+        actualFeatures = []
+        # print("Matches: ", matches)
+        # get the point nearest to the corner
+        for corner in corners:
+            minDist = 1e9
+            dist = [desiredKeypoints[match.queryIdx] - corner for match in matches]
+            minDist = np.linalg.norm(dist, axis=1)
+            argmin = np.argmin(minDist)
+
+            # while the point is already in the list, get the next nearest point
+            while tuple(desiredKeypoints[matches[argmin].queryIdx]) in desiredFeatures:
+                minDist[argmin] = 1e9
+                argmin = np.argmin(minDist)
+
+
+            desiredFeatures.append(tuple(desiredKeypoints[matches[argmin].queryIdx]))
+            actualFeatures.append(tuple(actualKeypoints[matches[argmin].trainIdx]))
+
+        # draw the keypoints as points
+        for i in actualFeatures:
+            self.actualData.draw = cv2.circle(
+                self.actualImage,
+                tuple(i),
+                10,
+                (0, 255, 0),
+                -1,
+            )
+
+        for i in desiredFeatures:
+            self.desiredData.draw = cv2.circle(
+                self.img_desired,
+                tuple(i),
+                10,
+                (0, 255, 0),
+                -1,
+            )
+
+        cv2.namedWindow("Actual", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Actual", 640, 480)
+        cv2.imshow("Actual", self.actualData.draw)
+
+        cv2.namedWindow("Desired", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Desired", 640, 480)
+        cv2.imshow("Desired", self.desiredData.draw)
+        cv2.waitKey(0)
 
     def rotationControl(self) -> np.ndarray:
         """
@@ -394,9 +595,11 @@ class GUO:
 
 
 if __name__ == "__main__":
-    img = cv2.imread(f"{PATH}/data/desired_1.jpg")
-    img2 = cv2.imread(f"{PATH}/data/desired_2.jpg")
-    control = GUO(img, img2, 1)
+    control = GUO(
+        cv2.imread(f"{PATH}/data/desired_1.jpg"),
+        cv2.imread(f"{PATH}/data/desired_2.jpg"),
+        1,
+    )
 
     print(
         control.getVels(
@@ -404,6 +607,8 @@ if __name__ == "__main__":
             get_aruco(cv2.imread(f"{PATH}/data/desired_1.jpg"), 4),
         )
     )
+
+    control.changeMode()
 
     print(
         control.getVels(

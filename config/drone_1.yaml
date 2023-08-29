@@ -10,8 +10,11 @@ camera_intrinsic_parameters: [789.68861713, 0, 647.33912413, 0, 790.42138672, 37
 # seguimiento: [96, 99]
 seguimiento: [96, 97, 98, 99]
 
+# only for leader's part two
+seguimiento2: [50, 51, 52, 53]
+
 reset_integrator: 0.008 # Reset integrator with the norm of the error (pixels)
-error_threshold: 0.01 # Error threshold (pixels) for changing the desired image for leader
+error_threshold: 0.05 # Error threshold (pixels) for changing the desired image for leader
 
 #### This gains are used for the control law
 # When l_prime_* > 0, then it must -> init <= max. It means that the gain increase when error approaches to 0
