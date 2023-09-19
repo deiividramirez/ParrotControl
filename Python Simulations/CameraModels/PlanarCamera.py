@@ -166,7 +166,7 @@ class PlanarCamera:
 
         return R
 
-    def draw_camera(self, ax, color="cyan", scale=1.0):
+    def draw_camera(self, ax, color="cyan", scale=1.0, label=None):
         """
         function: draw_camera
         description: draws this camera actual position
@@ -234,6 +234,7 @@ class PlanarCamera:
             [CAMupTRASFm[1, 5], CAMdwnTRASFm[1, 5]],
             [CAMupTRASFm[2, 5], CAMdwnTRASFm[2, 5]],
             c=color,
+            label=label,
         )
 
     def draw_frame(

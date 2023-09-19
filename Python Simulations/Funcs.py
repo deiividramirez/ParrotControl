@@ -1,11 +1,16 @@
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import pathlib
 import time
 
+font = {'size'   : 12}
+matplotlib.rc('font', **font)
+
+
 # import cv2
-import os
+# import os
 
 plt.rcParams["figure.autolayout"] = True
 
@@ -58,9 +63,10 @@ class dictDist:
 
 
 class Plotting3D(plt.Figure):
-    def __init__(self):
+    def __init__(self, title: str = "3D Plot"):
         super().__init__()
-        self.fig = plt.figure()
+        self.fig = plt.figure(figsize=(5, 5))
+        self.fig.set_size_inches(4, 4, forward=False)
         self.ax = self.fig.add_subplot(111, projection="3d")
 
         self.ax.autoscale(enable=True, axis="both", tight=True)
@@ -70,7 +76,11 @@ class Plotting3D(plt.Figure):
         self.ax.set_zlabel("Z")
         self.ax.set_aspect("equal")
 
-        self.ax.set_title("3D Plot")
+        # self.ax.set_title(title)
+
+        # self.ax.view_init(elev=5, azim=60)
+        # self.ax.view_init(elev=15, azim=45)
+        self.ax.view_init(elev=5, azim=75)
 
     def __call__(
         self,
@@ -79,6 +89,7 @@ class Plotting3D(plt.Figure):
         marker: str = "o",
         label=None,
         z_order=1,
+        alpha: float = 1,
     ) -> None:
         """
         Plot the points in 3D
@@ -89,6 +100,7 @@ class Plotting3D(plt.Figure):
             marker: str -> Marker of the points
             label: str -> Label of the points
             z_order: int -> Order of the points
+            alpha: float -> Transparency of the points
         """
         self.ax.scatter(
             points[:, 0],
@@ -98,9 +110,12 @@ class Plotting3D(plt.Figure):
             marker=marker,
             label=f"{label}",
             zorder=z_order,
+            alpha=alpha,
         )
 
-    def trajectory(self, points: np.ndarray, color: str = "b", label=None) -> None:
+    def trajectory(
+        self, points: np.ndarray, color: str = "b", label=None, alpha: float = 1
+    ) -> None:
         """
         Plot the trajectory of the camera
 
@@ -108,6 +123,7 @@ class Plotting3D(plt.Figure):
             points: np.ndarray -> Points to plot
             color: str -> Color of the points
             label: str -> Label of the points
+            alpha: float -> Transparency of the points
         """
         self.ax.plot(
             points[:, 0],
@@ -116,6 +132,7 @@ class Plotting3D(plt.Figure):
             color=color,
             label=label,
             zorder=1,
+            alpha=alpha,
         )
         self.ax.plot(
             points[-1, 0],
@@ -123,6 +140,7 @@ class Plotting3D(plt.Figure):
             points[-1, 2],
             color=color,
             marker="o",
+            alpha=alpha,
         )
         self.ax.plot(
             points[0, 0],
@@ -130,7 +148,33 @@ class Plotting3D(plt.Figure):
             points[0, 2],
             color=color,
             marker="o",
+            alpha=alpha,
         )
+
+    def trajectoryPoints(
+        self, points: np.ndarray, color: str = "b", label=None, alpha: float = 1
+    ) -> None:
+        """
+        Plot the trajectory of points
+
+        @ Parameters
+            points: np.ndarray (t, n, 3) -> Points to plot
+            color: str -> Color of the points
+            label: str -> Label of the points
+            alpha: float -> Transparency of the points
+        """
+
+        # plot trajectory
+        for i in range(points.shape[1]):
+            self.ax.plot(
+                points[:, i, 0],
+                points[:, i, 1],
+                points[:, i, 2],
+                color=color,
+                label=label,
+                zorder=1,
+                alpha=alpha,
+            )
 
     def show(self) -> None:
         """
@@ -152,7 +196,7 @@ class PlottingImage(plt.Figure):
         self.ax.set_ylabel("")
         self.ax.set_aspect("equal")
 
-        self.ax.set_title("Camera Image")
+        # self.ax.set_title("Camera Image")
 
         self.ax.set_xlim(xlim)
         self.ax.set_ylim(ylim)
@@ -475,7 +519,9 @@ def distancesInSphere(
                 continue
 
             distances.append(
-                dictDist(i, j, 1 / dp if control else dp, 1 / dd if control else dd)
+                dictDist(
+                    i, j, 1 / dp if control == 1 else dp, 1 / dd if control == 1 else dd
+                )
             )
     return distances
 
@@ -487,13 +533,13 @@ def guoL(distances: list, actualPoints: np.ndarray, control: int = 1) -> np.ndar
     @ Returns
         np.ndarray -> L matrix
     """
-    print(
-        f"\t[INFO] Calculating L matrix with GUO control law {'1/dist' if control else 'dist'}"
-    )
+    # print(
+    #     f"\t[INFO] Calculating L matrix with GUO control law >> {'1/dist' if control == 1 else 'dist'}"
+    # )
     n = len(distances)
     L = np.zeros((n, 3), dtype=np.float32)
     for i in range(n):
-        s = -distances[i].dist ** 3 if control else 1 / distances[i].dist
+        s = -distances[i].dist ** 3 if control == 1 else 1 / distances[i].dist
         pi = actualPoints[distances[i].i].reshape(3, 1)
         pj = actualPoints[distances[i].j].reshape(3, 1)
         L[i, :] = s * (pi.T @ ortoProj(pj) + pj.T @ ortoProj(pi))
@@ -528,6 +574,8 @@ def homography(desiredPoints: np.ndarray, actualPoints: np.ndarray) -> np.ndarra
     @ Returns
         np.ndarray -> Homography matrix
     """
+    # print(f"desiredPoints {desiredPoints}")
+    # print(f"actualPoints {actualPoints}")
 
     mean = np.mean(desiredPoints, axis=0)
     maxstd = max(np.std(desiredPoints, axis=0)) + 1e-9
@@ -591,7 +639,7 @@ def homography(desiredPoints: np.ndarray, actualPoints: np.ndarray) -> np.ndarra
     return H / H[2, 2]
 
 
-def H2Rt(H: np.ndarray, lastRot: np.ndarray) -> np.ndarray:
+def H2Rt(H: np.ndarray) -> tuple:
     # print(f"H: {H}")
     U, S, V = np.linalg.svd(H, full_matrices=True)
     # print(f"U: {U}, S: {S}, V: {V}")
@@ -635,29 +683,16 @@ def H2Rt(H: np.ndarray, lastRot: np.ndarray) -> np.ndarray:
         n2 = -n2
         t2 = -t2
 
-    if lastRot is None:
-        if n1[2] > n2[2]:
-            R = R1.T
-            t = zeta * t1
-            n = n1
-        else:
-            R = R2.T
-            t = zeta * t2
-            n = n2
-        lastRot = R
+    if n1[2] > n2[2]:
+        R = R1.T
+        t = zeta * t1
+        n = n1
     else:
-        if np.linalg.norm(r2E(lastRot) - r2E(R1.T)) < np.linalg.norm(r2E(lastRot) - r2E(R2.T)):
-            R = R1.T
-            t = zeta * t1
-            n = n1
-        else:
-            R = R2.T
-            t = zeta * t2
-            n = n2
-        lastRot = R
-    # print(f"R1 {R1.T} - {np.rad2deg(r2E(R1.T))}")
-    # print(f"R2 {R2.T} - {np.rad2deg(r2E(R2.T))}")
-    # print(f"R {R} - {np.rad2deg(r2E(R))}")
+        R = R2.T
+        t = zeta * t2
+        n = n2
+    # print("R1", R1.T)
+    # print("R2", R2.T)
     return R
 
 
@@ -666,7 +701,6 @@ def bearingControl(
     desired: Data,
     K: np.ndarray,
     Kinv: np.ndarray,
-    lastRot: np.ndarray,
     control: int = 1,
     toplot: list = None,
 ) -> np.ndarray:
@@ -696,7 +730,7 @@ def bearingControl(
 
         He = Kinv @ H @ K
 
-        R = H2Rt(He, lastRot)
+        R = H2Rt(He)
 
         # num, Rs, Ts, Ns = cv2.decomposeHomographyMat(H, K)
         # tries = [(Rs[i], Ts[i], Ns[i]) for i in range(num) if Ns[i][2] > 0]
@@ -711,15 +745,20 @@ def bearingControl(
         #         if Ns[i][2] > N[2]:
         #             R, T, N = tries[i]
         # print(">>>>>>", np.rad2deg(r2E(R)))
-        angles = np.rad2deg(r2E(R))
-        toplot[index][0].append(angles[0])
-        toplot[index][1].append(angles[1])
-        toplot[index][2].append(angles[2])
+        # angles = np.rad2deg(r2E(R))
+        # toplot[index][0].append(angles[0])
+        # toplot[index][1].append(angles[1])
+        # toplot[index][2].append(angles[2])
 
-        # U += actual.bearings[index] - desired.bearings[index]
-        U -= (
-            ortoProj(actual.bearings[index]) @ (np.eye(3) + R) @ desired.bearings[index]
+        U += (
+            -ortoProj(actual.bearings[index]) @ (np.eye(3) + R) @ desired.bearings[index] 
+            if control == 1
+            else actual.bearings[index] - (np.eye(3) + R) / 2 @ desired.bearings[index]
         )
+        # U += (
+        #     -ortoProj(actual.bearings[index]) @ (np.eye(3) + R) @ desired.bearings[index]
+        #     + actual.bearings[index] - (np.eye(3) + R) / 2 @ desired.bearings[index]
+        # )
         v += R.T - R
         # print(
         #     f"\n>>first: {actual.bearings[index]} ||: {np.linalg.norm(actual.bearings[index])}",
@@ -738,129 +777,116 @@ def summaryPlot(
     error: np.ndarray,
     errorPix: np.ndarray,
     integral: np.ndarray = None,
+    CONTROL: tuple = (0, 0),
+    PATH = "./",
 ) -> None:
-    if integral is None:
-        fig, ax = plt.subplots(3, 1, sharex=True)
-    else:
-        fig, ax = plt.subplots(4, 1, sharex=True)
+    # if integral is None:
+    #     fig, ax = plt.subplots(3, 1, sharex=True)
+    # else:
+    #     fig, ax = plt.subplots(4, 1, sharex=True)
+    fig = plt.figure(figsize=(15, 5))
+    fig.set_size_inches(12, 4, forward=False)
+    ax = np.array([fig.subplots(1, 3, sharex=True)])
     ax = ax.flatten()
     [i.autoscale(enable=True, axis="both", tight=False) for i in ax]
 
     # time vs pose
-    ax[0].plot(time, pose, label=("$x$", "$y$", "$z$", "$roll$", "$pitch$", "$yaw$"))
-    ax[0].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-    ax[0].set_ylabel("Pose")
-    ax[0].set_title("Pose")
+    # ax[1].plot(time, pose, label=("$x$", "$y$", "$z$", "$roll$", "$pitch$", "$yaw$"))
+    # ax[1].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    # ax[1].set_ylabel("Pose")
+    # ax[1].set_title("Pose")
 
     # time vs inputControl
-    ax[1].plot(
+    ax[0].plot(
         time, inputControl, label=("$V_x$", "$V_y$", "$V_z$", "$W_x$", "$W_y$", "$W_z$")
     )
-    ax[1].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-    ax[1].set_ylabel("Input control")
-    ax[1].set_title("Input control")
+    # ax[0].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    ax[0].legend(loc="best", shadow=True)
+    ax[0].set_ylabel("Input control")
+    # ax[0].set_title("Input control")
 
     # time vs error
-    ax[2].plot(
+    ax[1].plot(
         time,
-        error,
+        error[:, :6],
         label=(
-            "Error x (c)",
-            "Error y (c)",
-            "Error z (c)",
-            "Error roll (c)",
-            "Error pitch (c)",
-            "Error yaw (c)",
+            "Error x",
+            "Error y",
+            "Error z",
+            "Error pitch",
+            "Error yaw",
+            "Error roll",
         )
         if len(error.shape) > 1
         else ("Error (c)"),
     )
-    ax[2].plot(time, errorPix, label="Error (px)")
-    ax[2].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-    ax[2].set_ylabel("Errors")
-    ax[2].set_title("Errors")
+    ax[1].plot(time, errorPix, label="Error (px)")
+    # ax[1].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    ax[1].legend(loc="best", shadow=True)
+    ax[1].set_ylabel("Errors")
+    # ax[1].set_title("Pose Error")
 
-    # time vs errorPix
-
-    if integral is not None:
-        # time vs integral
-        ax[3].plot(time, integral, label=("Vx", "Vy", "Vz", "Wx", "Wy", "Wz"))
-        ax[3].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-        ax[3].set_ylabel("Integral")
-        ax[3].set_title("Integral")
-
-    [i.set_xlabel("Time [s]") for i in ax]
-
-def animation(
-    time: np.ndarray,
-    pose: np.ndarray,
-    error: np.ndarray,
-    errorPix: np.ndarray,
-    inputControl: np.ndarray,
-    integral: np.ndarray = None,
-    fig: plt.Figure = None,
-    ax: plt.Axes = None,
-) -> None:
-    [i.autoscale(enable=True, axis="both", tight=False) for i in ax]
-
-    # time vs pose
-    ax[0].plot(time, pose, label=("$x$", "$y$", "$z$", "$roll$", "$pitch$", "$yaw$"))
-    ax[0].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-    ax[0].set_ylabel("Pose")
-    ax[0].set_title("Pose")
-
-    # time vs inputControl
-    ax[1].plot(
-        time, inputControl, label=("$V_x$", "$V_y$", "$V_z$", "$W_x$", "$W_y$", "$W_z$")
-    )
-    ax[1].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-    ax[1].set_ylabel("Input control")
-    ax[1].set_title("Input control")
-
-    # time vs error
     ax[2].plot(
         time,
-        error,
+        error[:, 6:],
         label=(
-            "Error x (c)",
-            "Error y (c)",
-            "Error z (c)",
-            "Error roll (c)",
-            "Error pitch (c)",
-            "Error yaw (c)",
+            "Error x",
+            "Error y",
+            "Error z",
         )
+        if CONTROL[0] == 1
+        else tuple([f"$s_{i+1}$" for i in range(len(error[0, 6:]))])
         if len(error.shape) > 1
         else ("Error (c)"),
     )
-    ax[2].plot(time, errorPix, label="Error (px)")
-    ax[2].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    ax[2].legend(loc="best", shadow=True)
     ax[2].set_ylabel("Errors")
-    ax[2].set_title("Errors")
+    # if CONTROL[0] is 1 Bearing Error but, if control[1] is 1 + Orthogonal Projection or else + Difference
+    # else if CONTROL[0] is 0 Distance Error but, if control[1] is 1 + Orthogonal Projection or else + Difference
+    # ax[2].set_title(
+    #     (
+    #         "Bearing Error "
+    #         + ("Orthogonal Projection" if CONTROL[1] == 1 else "Difference")
+    #         if CONTROL[0]
+    #         else ("Distance Error " + ("1/dist" if CONTROL[1] == 1 else "dist"))
+    #     )
+    # )
 
-    # time vs errorPix
-
-    if integral is not None:
-        # time vs integral
-        ax[3].plot(time, integral, label=("Vx", "Vy", "Vz", "Wx", "Wy", "Wz"))
-        ax[3].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
-        ax[3].set_ylabel("Integral")
-        ax[3].set_title("Integral")
+    # # time vs errorPix
+    # if integral is not None:
+    #     # time vs integral
+    #     ax[3].plot(time, integral, label=("Vx", "Vy", "Vz", "Wx", "Wy", "Wz"))
+    #     ax[3].legend(loc="center left", ncol=2, bbox_to_anchor=(1, 0.5), shadow=True)
+    #     ax[3].set_ylabel("Integral")
+        # ax[3].set_title("Integral")
 
     [i.set_xlabel("Time [s]") for i in ax]
+    fig.tight_layout()
+    fig.savefig(
+        f"{PATH}/out/PlottingError{'Leader' if not CONTROL[0] else 'Follower'}{('OrthogonalProj' if CONTROL[1] == 1 else 'Difference') if CONTROL[0] else ('1_dist' if CONTROL[1] == 1 else 'dist')}.svg",
+        format="svg",
+        transparent=True,
+        bbox_inches="tight",
+        pad_inches=0.1,
+    )
 
-def animation3D(
-        cameraDesired,
-        camera,
-        actual_pose: np.ndarray,
-        fig: plt.Figure = None,
-        ax: plt.Axes = None,
-) -> None:
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
-    ax.set_aspect("equal")
 
-    ax.set_title("3D Plot")
-    camera.set_position(*actual_pose)
-    camera.draw_camera(ax, "b", scale=0.2)
-    cameraDesired.draw_camera(ax, "r", scale=0.2)
+def pointsMove(t: float, fx, fy, fz, n: int = 8) -> tuple:
+    """
+    Calculate the points to move
+
+    @ Parameters
+        t: float -> X position
+        fx -> Function to calculate the x position
+        fy -> Function to calculate the y position
+        fz -> Function to calculate the z position
+        n: int -> Number of points to move
+
+    @ Returns
+        tuple -> Points to move
+    """
+    N = np.zeros((n, 3), dtype=np.float32)
+    N[:, 0] = fx(t)
+    N[:, 1] = fy(t)
+    N[:, 2] = fz(t)
+    return N
