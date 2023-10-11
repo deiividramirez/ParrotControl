@@ -140,7 +140,7 @@ This script was developed for the Parrot Bebop 2 drone. The IP address of the dr
 
 ## Autores ✒️
 
-- `**David R`amírez** * [deiividramirez](https://github.com/deiividramirez) *
+- `**David Ramírez** * [deiividramirez](https://github.com/deiividramirez) *`
 
 
 <!-- ## License 📄 -->
